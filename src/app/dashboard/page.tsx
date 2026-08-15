@@ -1,9 +1,10 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import Link from "next/link";
+import PendientesCobrador from "@/components/PendientesCobrador";
 import SignOutButton from "@/components/SignOutButton";
 import CompletarContenedor from "@/components/CompletarContenedor";
-import PendientesCobrador from "@/components/PendientesCobrador";
 
 export const dynamic = "force-dynamic";
 
@@ -13,13 +14,21 @@ const AVATAR_COLOR: Record<string, string> = {
   Jose: "bg-[#B0662A]",
 };
 
+function round2(n: number) {
+  return Math.round((n + Number.EPSILON) * 100) / 100;
+}
+
 function formatUsd(n: number) {
-  return n.toLocaleString("es-ES", { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + " $";
+  return round2(n).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " $";
+}
+
+function formatEur(n: number) {
+  return round2(n).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
 }
 
 function formatImporte(pago: { importeUsd: any; importeEur: any }) {
   if (pago.importeUsd !== null) return formatUsd(Number(pago.importeUsd));
-  if (pago.importeEur !== null) return Number(pago.importeEur).toLocaleString("es-ES") + " € (sin tasa)";
+  if (pago.importeEur !== null) return formatEur(Number(pago.importeEur)) + " (sin tasa)";
   return "—";
 }
 
@@ -55,19 +64,19 @@ export default async function DashboardPage() {
   // Solo los pagos ya asociados a este contenedor cuentan para el recibido.
   const pagosDelContenedor = contenedor.pagos.filter((p) => p.importeUsd !== null);
   const pagosSinConversion = contenedor.pagos.filter((p) => p.importeUsd === null);
-  const sumaPagos = pagosDelContenedor.reduce((sum, p) => sum + Number(p.importeUsd), 0);
-  const recibido = saldoInicial + sumaPagos;
-  const falta = Math.max(totalFactura - recibido, 0);
-  const excedente = Math.max(recibido - totalFactura, 0);
+  const sumaPagos = round2(pagosDelContenedor.reduce((sum, p) => sum + Number(p.importeUsd), 0));
+  const recibido = round2(saldoInicial + sumaPagos);
+  const falta = round2(Math.max(totalFactura - recibido, 0));
+  const excedente = round2(Math.max(recibido - totalFactura, 0));
   const pct = totalFactura > 0 ? Math.min(Math.round((recibido / totalFactura) * 100), 100) : 0;
 
   const pendientes = contenedor.pagos.filter((p) => !p.cobradorId);
   const ultimosPagos = contenedor.pagos.slice(0, 5);
 
-  const objetivoPorCobrador = cobradores.length > 0 ? totalFactura / cobradores.length : 0;
+  const objetivoPorCobrador = cobradores.length > 0 ? round2(totalFactura / cobradores.length) : 0;
   const desglose = cobradores.map((c) => {
     const pagosDeCobrador = pagosDelContenedor.filter((p) => p.cobradorId === c.id);
-    const total = pagosDeCobrador.reduce((sum, p) => sum + Number(p.importeUsd), 0);
+    const total = round2(pagosDeCobrador.reduce((sum, p) => sum + Number(p.importeUsd), 0));
     return { cobrador: c, total, count: pagosDeCobrador.length };
   });
 
@@ -94,17 +103,28 @@ export default async function DashboardPage() {
         <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-amber/10 text-white text-[13.5px] font-medium">
           <span>▤</span> Inicio
         </div>
-        <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-steel-light text-[13.5px] font-medium opacity-50">
+        <Link
+          href="/dashboard/importar"
+          className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-steel-light text-[13.5px] font-medium hover:bg-white/5"
+        >
           <span>⇩</span> Importar pagos
-        </div>
+        </Link>
       </div>
 
       <main className="max-w-3xl mx-auto md:mx-0 w-full px-4 py-5 md:px-10 md:py-8">
-        <div className="mb-4">
-          <div className="font-mono text-[11px] uppercase text-steel mb-1.5">
-            {new Date().toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" })}
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <div className="font-mono text-[11px] uppercase text-steel mb-1.5">
+              {new Date().toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" })}
+            </div>
+            <h2 className="font-display text-[22px] font-semibold">Inicio</h2>
           </div>
-          <h2 className="font-display text-[22px] font-semibold">Inicio</h2>
+          <Link
+            href="/dashboard/importar"
+            className="flex-shrink-0 flex items-center gap-1.5 px-3.5 py-2.5 bg-navy-950 text-white text-[13px] font-semibold rounded-lg"
+          >
+            ⇩ Importar
+          </Link>
         </div>
 
         {/* Hero */}
@@ -199,14 +219,14 @@ export default async function DashboardPage() {
                   {pago.fecha.toLocaleDateString("es-ES")} · {pago.banco}
                 </div>
               </div>
-              <div className="text-right">
-                <div className="font-mono font-semibold whitespace-nowrap">{formatImporte(pago)}</div>
-                {pago.cobrador ? (
-                  <span className="text-xs text-steel font-mono">{pago.cobrador.nombre}</span>
-                ) : (
-                  <span className="text-xs text-alert font-mono">sin asignar</span>
-                )}
-              </div>
+              {pago.cobrador ? (
+                <span className="inline-flex items-center gap-1.5 bg-teal-bg text-[#0F5D45] text-xs font-semibold px-2.5 py-1.5 rounded-full font-mono before:content-['✓'] before:text-[11px]">
+                  {pago.cobrador.nombre}
+                </span>
+              ) : (
+                <span className="text-xs text-alert font-mono">sin asignar</span>
+              )}
+              <div className="font-mono font-semibold whitespace-nowrap">{formatImporte(pago)}</div>
             </div>
           ))}
         </div>

@@ -9,15 +9,19 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  const { cobradorId } = await req.json();
-  if (!cobradorId) {
-    return NextResponse.json({ error: "Falta cobradorId" }, { status: 400 });
+  const { cobradorId, contenedorId } = await req.json();
+  if (!cobradorId && !contenedorId) {
+    return NextResponse.json({ error: "Falta cobradorId o contenedorId" }, { status: 400 });
   }
+
+  const data: Record<string, string> = { actualizadoPorId: (session.user as any).id };
+  if (cobradorId) data.cobradorId = cobradorId;
+  if (contenedorId) data.contenedorId = contenedorId;
 
   const pago = await prisma.pago.update({
     where: { id: params.id },
-    data: { cobradorId },
-    include: { cobrador: true },
+    data,
+    include: { cobrador: true, contenedor: true },
   });
 
   return NextResponse.json({ pago });

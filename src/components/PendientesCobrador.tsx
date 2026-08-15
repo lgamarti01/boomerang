@@ -15,13 +15,18 @@ type PagoPendiente = {
   tasaCambio: number | null;
 };
 
+function round2(n: number) {
+  return Math.round((n + Number.EPSILON) * 100) / 100;
+}
+
 function formatUsd(n: number) {
-  return n.toLocaleString("es-ES", { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + " $";
+  return round2(n).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " $";
 }
 
 function formatImporte(pago: PagoPendiente) {
   if (pago.importeUsd !== null) return formatUsd(pago.importeUsd);
-  if (pago.importeEur !== null) return pago.importeEur.toLocaleString("es-ES") + " € (sin tasa)";
+  if (pago.importeEur !== null)
+    return round2(pago.importeEur).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " € (sin tasa)";
   return "—";
 }
 
@@ -72,7 +77,7 @@ export default function PendientesCobrador({
               <div className="font-mono font-bold text-[15.5px]">{formatImporte(pago)}</div>
               {pago.importeEur !== null && (
                 <div className="font-mono text-[10.5px] text-steel mt-0.5">
-                  {pago.importeEur.toLocaleString("es-ES")} €
+                  {round2(pago.importeEur).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
                   {pago.tasaCambio !== null ? (
                     <> · tasa {pago.tasaCambio.toLocaleString("es-ES", { minimumFractionDigits: 4 })}</>
                   ) : (

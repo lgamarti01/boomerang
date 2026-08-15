@@ -11,7 +11,7 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
 
   const contenedor = await prisma.contenedor.update({
     where: { id: params.id },
-    data: { estado: "COMPLETADO" },
+    data: { estado: "COMPLETADO", actualizadoPorId: (session.user as any).id },
   });
 
   return NextResponse.json({ contenedor });
