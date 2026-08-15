@@ -1,9 +1,9 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import AsignarCobrador from "@/components/AsignarCobrador";
 import SignOutButton from "@/components/SignOutButton";
 import CompletarContenedor from "@/components/CompletarContenedor";
+import PendientesCobrador from "@/components/PendientesCobrador";
 
 export const dynamic = "force-dynamic";
 
@@ -172,23 +172,18 @@ export default async function DashboardPage() {
             <div className="font-mono text-[11.5px] uppercase tracking-wide text-steel my-6 flex items-center gap-2 after:content-[''] after:flex-1 after:h-px after:bg-line">
               Pendientes de asignar cobrador
             </div>
-            {pendientes.map((pago) => (
-              <div
-                key={pago.id}
-                className="bg-white border border-[#F3C9C9] border-l-[3px] border-l-alert rounded-xl p-3.5 mb-2.5"
-              >
-                <div className="flex justify-between items-start mb-2.5">
-                  <div>
-                    <div className="font-semibold text-[14.5px]">{pago.persona}</div>
-                    <div className="font-mono text-[11.5px] text-steel mt-0.5">
-                      {pago.fecha.toLocaleDateString("es-ES")} · {pago.banco}
-                    </div>
-                  </div>
-                  <div className="font-mono font-bold text-[15.5px]">{formatImporte(pago)}</div>
-                </div>
-                <AsignarCobrador pagoId={pago.id} cobradores={cobradores} />
-              </div>
-            ))}
+            <PendientesCobrador
+              pagos={pendientes.map((p) => ({
+                id: p.id,
+                persona: p.persona,
+                fechaStr: p.fecha.toLocaleDateString("es-ES"),
+                banco: p.banco,
+                importeUsd: p.importeUsd !== null ? Number(p.importeUsd) : null,
+                importeEur: p.importeEur !== null ? Number(p.importeEur) : null,
+                tasaCambio: p.tasaCambio !== null ? Number(p.tasaCambio) : null,
+              }))}
+              cobradores={cobradores}
+            />
           </>
         )}
 
