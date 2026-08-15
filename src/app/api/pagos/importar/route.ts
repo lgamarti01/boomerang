@@ -87,22 +87,36 @@ export async function POST(req: NextRequest) {
       totalFichero: filas.length,
       nuevos: 0,
       duplicados: 0,
+      anterioresAlUltimo: 0,
       sinTasa: 0,
       pagosNuevos: [],
     });
   }
 
+  // Salvaguarda clave: nunca importamos pagos con fecha igual o anterior al
+  // último pago ya registrado en BBDD para este banco. Esto evita que, si se
+  // sube por error un fichero con un rango de fechas más amplio del que toca,
+  // se cuelen pagos históricos que en realidad pertenecen a otro contenedor.
+  const ultimoPago = await prisma.pago.aggregate({
+    where: { banco: parser.banco },
+    _max: { fecha: true },
+  });
+  const fechaCorte = ultimoPago._max.fecha ? fechaISO(ultimoPago._max.fecha) : null;
+
+  const dentroDeRango = fechaCorte ? detectados.filter((d) => d.fecha > fechaCorte) : detectados;
+  const anterioresAlUltimo = detectados.length - dentroDeRango.length;
+
   const idsExistentes = new Set(
     (
       await prisma.pago.findMany({
-        where: { idOrigen: { in: detectados.map((d) => d.idOrigen) } },
+        where: { idOrigen: { in: dentroDeRango.map((d) => d.idOrigen) } },
         select: { idOrigen: true },
       })
     ).map((p) => p.idOrigen)
   );
 
-  const nuevos = detectados.filter((d) => !idsExistentes.has(d.idOrigen));
-  const duplicados = detectados.length - nuevos.length;
+  const nuevos = dentroDeRango.filter((d) => !idsExistentes.has(d.idOrigen));
+  const duplicados = dentroDeRango.length - nuevos.length;
 
   const fechasUnicas = Array.from(new Set(nuevos.map((n) => n.fecha)));
   const tasas = await prisma.tipoCambioDia.findMany({
@@ -154,6 +168,7 @@ export async function POST(req: NextRequest) {
     totalFichero: filas.length,
     nuevos: pagosNuevos.length,
     duplicados,
+    anterioresAlUltimo,
     sinTasa,
     pagosNuevos: pagosNuevos.map((p) => ({
       persona: p.persona,

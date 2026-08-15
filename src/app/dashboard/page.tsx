@@ -109,6 +109,12 @@ export default async function DashboardPage() {
         >
           <span>⇩</span> Importar pagos
         </Link>
+        <Link
+          href="/dashboard/pagos"
+          className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-steel-light text-[13.5px] font-medium hover:bg-white/5"
+        >
+          <span>📅</span> Pagos por fecha
+        </Link>
       </div>
 
       <main className="max-w-3xl mx-auto md:mx-0 w-full px-4 py-5 md:px-10 md:py-8">
@@ -119,12 +125,20 @@ export default async function DashboardPage() {
             </div>
             <h2 className="font-display text-[22px] font-semibold">Inicio</h2>
           </div>
-          <Link
-            href="/dashboard/importar"
-            className="flex-shrink-0 flex items-center gap-1.5 px-3.5 py-2.5 bg-navy-950 text-white text-[13px] font-semibold rounded-lg"
-          >
-            ⇩ Importar
-          </Link>
+          <div className="flex-shrink-0 flex items-center gap-2">
+            <Link
+              href="/dashboard/pagos"
+              className="flex items-center gap-1.5 px-3.5 py-2.5 border border-line bg-white text-[13px] font-semibold rounded-lg"
+            >
+              📅
+            </Link>
+            <Link
+              href="/dashboard/importar"
+              className="flex items-center gap-1.5 px-3.5 py-2.5 bg-navy-950 text-white text-[13px] font-semibold rounded-lg"
+            >
+              ⇩ Importar
+            </Link>
+          </div>
         </div>
 
         {/* Hero */}

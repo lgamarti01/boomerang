@@ -9,6 +9,7 @@ type Resultado = {
   totalFichero: number;
   nuevos: number;
   duplicados: number;
+  anterioresAlUltimo: number;
   sinTasa: number;
   pagosNuevos: { persona: string; fecha: string; importeEur: number | null; importeUsd: number | null }[];
 };
@@ -122,6 +123,9 @@ export default function ImportarPagosPage() {
                 <div>Filas en el fichero: {resultado.totalFichero}</div>
                 <div>✓ Pagos nuevos importados: {resultado.nuevos}</div>
                 <div>· Duplicados (ya existían): {resultado.duplicados}</div>
+                {resultado.anterioresAlUltimo > 0 && (
+                  <div>· Descartados por ser anteriores al último pago registrado: {resultado.anterioresAlUltimo}</div>
+                )}
                 {resultado.sinTasa > 0 && <div>⚠ Sin tipo de cambio ese día: {resultado.sinTasa}</div>}
               </div>
             </div>
