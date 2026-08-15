@@ -2,12 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { detectarBanco, bancosSoportados } from "@/lib/importers";
+import { detectarBancoEnFilasCrudas, filasCrudasAObjetos, bancosSoportados } from "@/lib/importers";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
 
 function fechaISO(d: Date) {
   return d.toISOString().slice(0, 10);
+}
+
+// Convierte celdas de tipo Date a texto YYYY-MM-DD, para que todos los
+// parsers de banco trabajen siempre con el mismo tipo de dato en las fechas.
+function normalizarFechasEnGrid(grid: any[][]): any[][] {
+  return grid.map((fila) =>
+    (fila || []).map((celda) => (celda instanceof Date ? fechaISO(celda) : celda))
+  );
 }
 
 export async function POST(req: NextRequest) {
@@ -26,28 +34,19 @@ export async function POST(req: NextRequest) {
   const nombreFichero = file.name.toLowerCase();
   const buffer = Buffer.from(await file.arrayBuffer());
 
-  let filas: Record<string, any>[] = [];
+  let grid: any[][] = [];
   try {
     if (nombreFichero.endsWith(".csv")) {
       const texto = buffer.toString("utf-8");
-      const parsed = Papa.parse(texto, { header: true, skipEmptyLines: true });
-      filas = parsed.data as Record<string, any>[];
+      const parsed = Papa.parse(texto, { header: false, skipEmptyLines: true });
+      grid = parsed.data as any[][];
     } else if (nombreFichero.endsWith(".xlsx") || nombreFichero.endsWith(".xls")) {
       const wb = XLSX.read(buffer, { type: "buffer", cellDates: true });
       const hoja = wb.Sheets[wb.SheetNames[0]];
-      filas = XLSX.utils.sheet_to_json(hoja, { defval: "" });
-      filas = filas.map((f) => {
-        const copia = { ...f };
-        for (const k of Object.keys(copia)) {
-          if (copia[k] instanceof Date) {
-            copia[k] = copia[k].toISOString().slice(0, 10);
-          }
-        }
-        return copia;
-      });
+      grid = XLSX.utils.sheet_to_json(hoja, { header: 1, defval: "", raw: true }) as any[][];
     } else {
       return NextResponse.json(
-        { error: "Formato de fichero no soportado. Sube un .csv o .xlsx" },
+        { error: "Formato de fichero no soportado. Sube un .csv o .xlsx/.xls" },
         { status: 400 }
       );
     }
@@ -58,13 +57,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  if (filas.length === 0) {
+  grid = normalizarFechasEnGrid(grid);
+
+  if (grid.length === 0) {
     return NextResponse.json({ error: "El fichero está vacío" }, { status: 400 });
   }
 
-  const headers = Object.keys(filas[0]);
-  const parser = detectarBanco(headers);
-  if (!parser) {
+  const deteccion = detectarBancoEnFilasCrudas(grid);
+  if (!deteccion) {
     return NextResponse.json(
       {
         error: `No se reconoce el formato de este fichero. Bancos soportados de momento: ${bancosSoportados().join(", ")}.`,
@@ -72,6 +72,8 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
+  const { parser, filaCabeceraIndex } = deteccion;
+  const filas = filasCrudasAObjetos(grid, filaCabeceraIndex);
 
   const contenedor = await prisma.contenedor.findFirst({ where: { estado: "ACTIVO" } });
   if (!contenedor) {

@@ -249,7 +249,11 @@ export default async function DashboardPage() {
           Desglose por cobrador
         </div>
         {desglose.map(({ cobrador, total, count }) => (
-          <div key={cobrador.id} className="bg-white border border-line rounded-xl p-3.5 mb-2.5 flex items-center gap-3.5">
+          <Link
+            key={cobrador.id}
+            href={`/dashboard/cobradores/${cobrador.id}`}
+            className="bg-white border border-line rounded-xl p-3.5 mb-2.5 flex items-center gap-3.5 active:bg-[#FAFBFC]"
+          >
             <div
               className={`w-[38px] h-[38px] rounded-[10px] flex items-center justify-center font-display font-semibold text-sm text-white flex-shrink-0 ${
                 AVATAR_COLOR[cobrador.nombre] ?? "bg-steel"
@@ -265,7 +269,7 @@ export default async function DashboardPage() {
               <div className="font-mono font-bold text-base">{formatUsd(total)}</div>
               <div className="font-mono text-[11px] text-steel mt-0.5">objetivo {formatUsd(objetivoPorCobrador)}</div>
             </div>
-          </div>
+          </Link>
         ))}
       </main>
     </div>

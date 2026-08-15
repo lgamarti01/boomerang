@@ -27,7 +27,7 @@ export default async function PagosPorFechaPage({
   const pagos = await prisma.pago.findMany({
     where: { fecha: new Date(fecha) },
     include: { cobrador: true, contenedor: true },
-    orderBy: { creadoEn: "desc" },
+    orderBy: { persona: "asc" },
   });
 
   const totalUsd = round2(
