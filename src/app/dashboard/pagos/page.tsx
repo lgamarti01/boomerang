@@ -30,6 +30,11 @@ export default async function PagosPorFechaPage({
     orderBy: { persona: "asc" },
   });
 
+  const contenedores = await prisma.contenedor.findMany({
+    select: { id: true, nombre: true },
+    orderBy: { creadoEn: "desc" },
+  });
+
   const totalUsd = round2(
     pagos.reduce((sum, p) => sum + (p.importeUsd !== null ? Number(p.importeUsd) : 0), 0)
   );
@@ -38,6 +43,7 @@ export default async function PagosPorFechaPage({
     id: p.id,
     persona: p.persona,
     banco: p.banco,
+    contenedorId: p.contenedorId,
     contenedorNombre: p.contenedor?.nombre ?? null,
     cobradorNombre: p.cobrador?.nombre ?? null,
     asignadoPorAdmin: p.cobradorAsignadoPor ? p.cobradorAsignadoPor.rol === "ADMIN" : null,
@@ -69,7 +75,7 @@ export default async function PagosPorFechaPage({
             No hay ningún pago registrado el {new Date(fecha).toLocaleDateString("es-ES")}.
           </div>
         ) : (
-          <ListaPagosFecha pagos={pagosSimplificados} />
+          <ListaPagosFecha pagos={pagosSimplificados} contenedores={contenedores} />
         )}
       </main>
     </div>

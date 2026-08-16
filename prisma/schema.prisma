@@ -61,7 +61,7 @@ model Cobrador {
 model Contenedor {
   id                 String           @id @default(cuid())
   nombre             String
-  codigo             String           @unique
+  codigo             String?          @unique // ej. MSKU9395463 — puede quedar sin asignar de momento
   saldoInicial       Decimal          @default(0) @db.Decimal(12, 2)
   monedaSaldoInicial String           @default("USD")
   fechaInicio        DateTime

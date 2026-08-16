@@ -6,6 +6,7 @@ import PendientesCobrador from "@/components/PendientesCobrador";
 import QuitarAsignacion from "@/components/QuitarAsignacion";
 import SignOutButton from "@/components/SignOutButton";
 import CompletarContenedor from "@/components/CompletarContenedor";
+import SelectorContenedor from "@/components/SelectorContenedor";
 
 export const dynamic = "force-dynamic";
 
@@ -33,20 +34,39 @@ function formatImporte(pago: { importeUsd: any; importeEur: any }) {
   return "—";
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: { contenedorId?: string };
+}) {
   const session = await getServerSession(authOptions);
 
-  const contenedor = await prisma.contenedor.findFirst({
-    where: { estado: "ACTIVO" },
-    include: {
-      pagos: {
-        include: { cobrador: true, cobradorAsignadoPor: true },
-        orderBy: { fecha: "desc" },
-      },
+  const includePagos = {
+    pagos: {
+      include: { cobrador: true, cobradorAsignadoPor: true },
+      orderBy: { fecha: "desc" as const },
     },
-  });
+  };
+
+  let contenedor = searchParams.contenedorId
+    ? await prisma.contenedor.findUnique({
+        where: { id: searchParams.contenedorId },
+        include: includePagos,
+      })
+    : null;
+
+  if (!contenedor) {
+    contenedor = await prisma.contenedor.findFirst({
+      where: { estado: "ACTIVO" },
+      include: includePagos,
+    });
+  }
 
   const cobradores = await prisma.cobrador.findMany({ where: { activo: true } });
+  const todosLosContenedores = await prisma.contenedor.findMany({
+    select: { id: true, nombre: true, estado: true },
+    orderBy: { creadoEn: "desc" },
+  });
 
   const ultimoTipoCambio = await prisma.tipoCambioDia.aggregate({ _max: { fecha: true } });
   const ultimaFechaTipoCambio = ultimoTipoCambio._max.fecha
@@ -57,7 +77,7 @@ export default async function DashboardPage() {
     return (
       <div className="min-h-screen flex items-center justify-center p-6 text-center">
         <div>
-          <p className="font-display text-lg mb-2">No hay ningún contenedor activo</p>
+          <p className="font-display text-lg mb-2">No hay ningún contenedor todavía</p>
           <p className="text-steel text-sm">Da de alta un contenedor para empezar a registrar pagos.</p>
         </div>
       </div>
@@ -121,6 +141,12 @@ export default async function DashboardPage() {
           <span>📅</span> Pagos por fecha
         </Link>
         <Link
+          href="/dashboard/contenedores"
+          className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-steel-light text-[13.5px] font-medium hover:bg-white/5"
+        >
+          <span>📦</span> Contenedores
+        </Link>
+        <Link
           href="/dashboard/usuarios"
           className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-steel-light text-[13.5px] font-medium hover:bg-white/5"
         >
@@ -137,6 +163,12 @@ export default async function DashboardPage() {
             <h2 className="font-display text-[22px] font-semibold">Inicio</h2>
           </div>
           <div className="flex-shrink-0 flex items-center gap-2">
+            <Link
+              href="/dashboard/contenedores"
+              className="flex items-center gap-1.5 px-3.5 py-2.5 border border-line bg-white text-[13px] font-semibold rounded-lg"
+            >
+              📦
+            </Link>
             <Link
               href="/dashboard/usuarios"
               className="flex items-center gap-1.5 px-3.5 py-2.5 border border-line bg-white text-[13px] font-semibold rounded-lg"
@@ -163,7 +195,9 @@ export default async function DashboardPage() {
           <div className="flex justify-between items-start mb-4">
             <div>
               <div className="font-display font-semibold text-[19px]">{contenedor.nombre}</div>
-              <div className="font-mono text-[11.5px] text-steel-light mt-0.5">{contenedor.codigo}</div>
+              <div className="font-mono text-[11.5px] text-steel-light mt-0.5">
+                {contenedor.codigo || "sin código todavía"}
+              </div>
               <div className="font-mono text-[11px] text-steel-light mt-1">
                 Pagos desde el {contenedor.fechaInicio.toLocaleDateString("es-ES")}
               </div>
@@ -172,6 +206,11 @@ export default async function DashboardPage() {
               {contenedor.estado === "ACTIVO" ? "Activo" : contenedor.estado}
             </span>
           </div>
+
+          <div className="mb-4">
+            <SelectorContenedor contenedorId={contenedor.id} contenedores={todosLosContenedores} />
+          </div>
+
           <div className="flex justify-between items-baseline mb-2.5">
             <div>
               <div className="font-mono text-[11px] text-steel-light mb-0.5">RECIBIDO (incl. saldo inicial)</div>
@@ -193,6 +232,13 @@ export default async function DashboardPage() {
             <span>Total factura: {formatUsd(totalFactura)}</span>
           </div>
         </div>
+
+        {contenedor.estado !== "ACTIVO" && (
+          <div className="bg-[#EFF3FF] border border-[#CDD9F7] rounded-xl p-3.5 mb-4 text-[13px] text-[#2A4FB0]">
+            Estás viendo un contenedor que no es el activo — los pagos que importes siempre van al
+            contenedor activo, no a este.
+          </div>
+        )}
 
         {excedente > 0 && (
           <div className="bg-teal-bg border border-[#CDE9DF] rounded-xl p-4 mb-4">
@@ -248,32 +294,38 @@ export default async function DashboardPage() {
           Últimos pagos recibidos
         </div>
         <div className="bg-white border border-line rounded-xl px-4">
-          {ultimosPagos.map((pago) => (
-            <div key={pago.id} className="flex justify-between items-center py-3 border-b border-line last:border-0 gap-2.5">
-              <div>
-                <div className="font-semibold text-[13.5px]">{pago.persona}</div>
-                <div className="font-mono text-xs text-steel mt-0.5">
-                  {pago.fecha.toLocaleDateString("es-ES")} · {pago.banco}
-                </div>
-              </div>
-              {pago.cobrador ? (
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center gap-1.5 bg-teal-bg text-[#0F5D45] text-xs font-semibold px-2.5 py-1.5 rounded-full font-mono before:content-['✓'] before:text-[11px]">
-                    {pago.cobrador.nombre}
-                    {pago.cobradorAsignadoPor && (
-                      <span className="opacity-60 font-normal">
-                        · {pago.cobradorAsignadoPor.rol === "ADMIN" ? "Admin" : "Auto"}
-                      </span>
-                    )}
-                  </span>
-                  <QuitarAsignacion pagoId={pago.id} />
-                </div>
-              ) : (
-                <span className="text-xs text-alert font-mono">sin asignar</span>
-              )}
-              <div className="font-mono font-semibold whitespace-nowrap">{formatImporte(pago)}</div>
+          {ultimosPagos.length === 0 ? (
+            <div className="text-center text-steel text-[13px] py-6">
+              Este contenedor todavía no tiene ningún pago.
             </div>
-          ))}
+          ) : (
+            ultimosPagos.map((pago) => (
+              <div key={pago.id} className="flex justify-between items-center py-3 border-b border-line last:border-0 gap-2.5">
+                <div>
+                  <div className="font-semibold text-[13.5px]">{pago.persona}</div>
+                  <div className="font-mono text-xs text-steel mt-0.5">
+                    {pago.fecha.toLocaleDateString("es-ES")} · {pago.banco}
+                  </div>
+                </div>
+                {pago.cobrador ? (
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 bg-teal-bg text-[#0F5D45] text-xs font-semibold px-2.5 py-1.5 rounded-full font-mono before:content-['✓'] before:text-[11px]">
+                      {pago.cobrador.nombre}
+                      {pago.cobradorAsignadoPor && (
+                        <span className="opacity-60 font-normal">
+                          · {pago.cobradorAsignadoPor.rol === "ADMIN" ? "Admin" : "Auto"}
+                        </span>
+                      )}
+                    </span>
+                    <QuitarAsignacion pagoId={pago.id} />
+                  </div>
+                ) : (
+                  <span className="text-xs text-alert font-mono">sin asignar</span>
+                )}
+                <div className="font-mono font-semibold whitespace-nowrap">{formatImporte(pago)}</div>
+              </div>
+            ))
+          )}
         </div>
 
         <div className="font-mono text-[11.5px] uppercase tracking-wide text-steel my-6 flex items-center gap-2 after:content-[''] after:flex-1 after:h-px after:bg-line">

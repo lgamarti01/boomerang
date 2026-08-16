@@ -2,11 +2,13 @@
 
 import { useState, useMemo } from "react";
 import QuitarAsignacion from "@/components/QuitarAsignacion";
+import ReasignarContenedor from "@/components/ReasignarContenedor";
 
 type PagoFecha = {
   id: string;
   persona: string;
   banco: string;
+  contenedorId: string | null;
   contenedorNombre: string | null;
   cobradorNombre: string | null;
   asignadoPorAdmin: boolean | null;
@@ -35,7 +37,13 @@ function formatImporte(pago: PagoFecha) {
   return "—";
 }
 
-export default function ListaPagosFecha({ pagos }: { pagos: PagoFecha[] }) {
+export default function ListaPagosFecha({
+  pagos,
+  contenedores,
+}: {
+  pagos: PagoFecha[];
+  contenedores: { id: string; nombre: string }[];
+}) {
   const [busqueda, setBusqueda] = useState("");
 
   const filtrados = useMemo(() => {
@@ -73,8 +81,13 @@ export default function ListaPagosFecha({ pagos }: { pagos: PagoFecha[] }) {
             >
               <div className="min-w-0">
                 <div className="font-semibold text-[13.5px] truncate">{pago.persona}</div>
-                <div className="font-mono text-xs text-steel mt-0.5">
-                  {pago.banco} · {pago.contenedorNombre ?? "sin contenedor"}
+                <div className="font-mono text-xs text-steel mt-0.5 flex items-center gap-1">
+                  {pago.banco} ·{" "}
+                  <ReasignarContenedor
+                    pagoId={pago.id}
+                    contenedorId={pago.contenedorId}
+                    contenedores={contenedores}
+                  />
                 </div>
               </div>
               <div className="flex items-center gap-2.5 flex-shrink-0">
