@@ -6,9 +6,9 @@ import { useRouter } from "next/navigation";
 type Cobrador = { id: string; nombre: string };
 
 const COLOR_BY_NOMBRE: Record<string, string> = {
-  Ana: "text-[#2A4FB0]",
-  Miguel: "text-teal",
-  Carlos: "text-[#B0662A]",
+  Vasallo: "text-[#2A4FB0]",
+  Pedro: "text-teal",
+  Jose: "text-[#B0662A]",
 };
 
 export default function AsignarCobrador({

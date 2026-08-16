@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import AsignarCobrador from "@/components/AsignarCobrador";
 import QuitarAsignacion from "@/components/QuitarAsignacion";
 import ReasignarContenedor from "@/components/ReasignarContenedor";
 
@@ -16,11 +17,7 @@ type PagoFecha = {
   importeEur: number | null;
 };
 
-const AVATAR_COLOR: Record<string, string> = {
-  Vasallo: "bg-[#2A4FB0]",
-  Pedro: "bg-teal",
-  Jose: "bg-[#B0662A]",
-};
+const SIN_ASIGNAR = "__SIN_ASIGNAR__";
 
 function round2(n: number) {
   return Math.round((n + Number.EPSILON) * 100) / 100;
@@ -40,84 +37,102 @@ function formatImporte(pago: PagoFecha) {
 export default function ListaPagosFecha({
   pagos,
   contenedores,
+  cobradores,
 }: {
   pagos: PagoFecha[];
   contenedores: { id: string; nombre: string }[];
+  cobradores: { id: string; nombre: string }[];
 }) {
   const [busqueda, setBusqueda] = useState("");
+  const [filtroCobrador, setFiltroCobrador] = useState("");
 
   const filtrados = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
-    if (!q) return pagos;
-    return pagos.filter((p) => p.persona.toLowerCase().includes(q));
-  }, [busqueda, pagos]);
+    return pagos.filter((p) => {
+      const coincideNombre = !q || p.persona.toLowerCase().includes(q);
+      let coincideCobrador = true;
+      if (filtroCobrador === SIN_ASIGNAR) coincideCobrador = !p.cobradorNombre;
+      else if (filtroCobrador) coincideCobrador = p.cobradorNombre === filtroCobrador;
+      return coincideNombre && coincideCobrador;
+    });
+  }, [busqueda, filtroCobrador, pagos]);
 
-  const sinAsignar = filtrados.filter((p) => !p.cobradorNombre).length;
+  const sinAsignar = pagos.filter((p) => !p.cobradorNombre).length;
 
   return (
     <div>
-      <input
-        type="text"
-        value={busqueda}
-        onChange={(e) => setBusqueda(e.target.value)}
-        placeholder="Buscar por nombre..."
-        className="w-full px-3.5 py-2.5 bg-white border border-line rounded-lg text-[13.5px] outline-none focus:border-navy-800 mb-3"
-      />
+      <div className="flex gap-2 mb-3">
+        <input
+          type="text"
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          placeholder="Buscar por nombre..."
+          className="flex-1 min-w-0 px-3.5 py-2.5 bg-white border border-line rounded-lg text-[13.5px] outline-none focus:border-navy-800"
+        />
+        <select
+          value={filtroCobrador}
+          onChange={(e) => setFiltroCobrador(e.target.value)}
+          className="flex-shrink-0 px-2.5 py-2.5 bg-white border border-line rounded-lg text-[13px] outline-none focus:border-navy-800 max-w-[140px]"
+        >
+          <option value="">Todos</option>
+          <option value={SIN_ASIGNAR}>Sin asignar</option>
+          {cobradores.map((c) => (
+            <option key={c.id} value={c.nombre}>
+              {c.nombre}
+            </option>
+          ))}
+        </select>
+      </div>
 
-      <div className="font-mono text-[11.5px] uppercase tracking-wide text-steel mb-2">
-        {filtrados.length} pago(s) · {sinAsignar > 0 ? `${sinAsignar} sin cobrador asignado` : "todos asignados"}
+      <div className="font-mono text-[11.5px] uppercase tracking-wide text-steel mb-3">
+        {filtrados.length} pago(s) · {sinAsignar > 0 ? `${sinAsignar} sin cobrador asignado en total` : "todos asignados"}
       </div>
 
       {filtrados.length === 0 ? (
         <div className="text-center text-steel text-[13.5px] py-10">
-          No hay pagos que coincidan con "{busqueda}".
+          No hay pagos que coincidan con los filtros.
         </div>
       ) : (
-        <div className="bg-white border border-line rounded-xl px-4">
-          {filtrados.map((pago) => (
-            <div
-              key={pago.id}
-              className="flex justify-between items-center py-3 border-b border-line last:border-0 gap-2.5"
-            >
-              <div className="min-w-0">
-                <div className="font-semibold text-[13.5px] truncate">{pago.persona}</div>
-                <div className="font-mono text-xs text-steel mt-0.5 flex items-center gap-1">
-                  {pago.banco} ·{" "}
-                  <ReasignarContenedor
-                    pagoId={pago.id}
-                    contenedorId={pago.contenedorId}
-                    contenedores={contenedores}
-                  />
-                </div>
+        filtrados.map((pago) => (
+          <div
+            key={pago.id}
+            className={`bg-white border rounded-xl p-3.5 mb-2.5 ${
+              pago.cobradorNombre ? "border-line" : "border-[#F3C9C9] border-l-[3px] border-l-alert"
+            }`}
+          >
+            <div className="flex justify-between items-start mb-3">
+              <div>
+                <div className="font-semibold text-[14.5px]">{pago.persona}</div>
+                <div className="font-mono text-[11.5px] text-steel mt-0.5">{pago.banco}</div>
               </div>
-              <div className="flex items-center gap-2.5 flex-shrink-0">
-                {pago.cobradorNombre ? (
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <span
-                      className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-[11px] font-semibold flex-shrink-0 ${
-                        AVATAR_COLOR[pago.cobradorNombre] ?? "bg-steel"
-                      }`}
-                      title={pago.cobradorNombre}
-                    >
-                      {pago.cobradorNombre[0]}
-                    </span>
-                    {pago.asignadoPorAdmin !== null && (
-                      <span className="text-[9.5px] font-mono text-steel">
-                        {pago.asignadoPorAdmin ? "Admin" : "Auto"}
-                      </span>
-                    )}
-                    <QuitarAsignacion pagoId={pago.id} />
-                  </div>
-                ) : (
-                  <span className="text-[11px] text-alert font-mono">sin asignar</span>
-                )}
-                <div className="font-mono font-semibold whitespace-nowrap text-[13.5px]">
-                  {formatImporte(pago)}
-                </div>
-              </div>
+              <div className="font-mono font-bold text-[15.5px]">{formatImporte(pago)}</div>
             </div>
-          ))}
-        </div>
+
+            <div className="mb-3">
+              <ReasignarContenedor
+                pagoId={pago.id}
+                contenedorId={pago.contenedorId}
+                contenedores={contenedores}
+              />
+            </div>
+
+            {pago.cobradorNombre ? (
+              <div className="flex items-center justify-between pt-3 border-t border-line">
+                <span className="inline-flex items-center gap-1.5 bg-teal-bg text-[#0F5D45] text-xs font-semibold px-2.5 py-1.5 rounded-full font-mono before:content-['✓'] before:text-[11px]">
+                  {pago.cobradorNombre}
+                  {pago.asignadoPorAdmin !== null && (
+                    <span className="opacity-60 font-normal">
+                      · {pago.asignadoPorAdmin ? "Admin" : "Auto"}
+                    </span>
+                  )}
+                </span>
+                <QuitarAsignacion pagoId={pago.id} />
+              </div>
+            ) : (
+              <AsignarCobrador pagoId={pago.id} cobradores={cobradores} />
+            )}
+          </div>
+        ))
       )}
     </div>
   );

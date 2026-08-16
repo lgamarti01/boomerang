@@ -35,6 +35,11 @@ export default async function PagosPorFechaPage({
     orderBy: { creadoEn: "desc" },
   });
 
+  const cobradores = await prisma.cobrador.findMany({
+    where: { activo: true },
+    select: { id: true, nombre: true },
+  });
+
   const totalUsd = round2(
     pagos.reduce((sum, p) => sum + (p.importeUsd !== null ? Number(p.importeUsd) : 0), 0)
   );
@@ -75,7 +80,7 @@ export default async function PagosPorFechaPage({
             No hay ningún pago registrado el {new Date(fecha).toLocaleDateString("es-ES")}.
           </div>
         ) : (
-          <ListaPagosFecha pagos={pagosSimplificados} contenedores={contenedores} />
+          <ListaPagosFecha pagos={pagosSimplificados} contenedores={contenedores} cobradores={cobradores} />
         )}
       </main>
     </div>
