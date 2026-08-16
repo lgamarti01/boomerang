@@ -29,7 +29,7 @@ export default function LoginPage() {
       setError("Usuario o contraseña incorrectos.");
       return;
     }
-    router.push("/dashboard");
+    router.push("/");
   }
 
   return (

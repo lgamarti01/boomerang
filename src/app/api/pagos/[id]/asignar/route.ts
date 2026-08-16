@@ -9,13 +9,30 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
+  const usuarioId = (session.user as any).id as string;
+  const rol = (session.user as any).rol as string;
+  const miCobradorId = (session.user as any).cobradorId as string | null;
+
   const { cobradorId, contenedorId } = await req.json();
   if (!cobradorId && !contenedorId) {
     return NextResponse.json({ error: "Falta cobradorId o contenedorId" }, { status: 400 });
   }
 
-  const data: Record<string, string> = { actualizadoPorId: (session.user as any).id };
-  if (cobradorId) data.cobradorId = cobradorId;
+  if (rol !== "ADMIN") {
+    if (contenedorId) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+    }
+    if (!cobradorId || cobradorId !== miCobradorId) {
+      return NextResponse.json({ error: "Solo puedes asignarte pagos a ti mismo" }, { status: 403 });
+    }
+  }
+
+  const data: Record<string, any> = { actualizadoPorId: usuarioId };
+  if (cobradorId) {
+    data.cobradorId = cobradorId;
+    data.cobradorAsignadoPorId = usuarioId;
+    data.cobradorAsignadoEn = new Date();
+  }
   if (contenedorId) data.contenedorId = contenedorId;
 
   const pago = await prisma.pago.update({

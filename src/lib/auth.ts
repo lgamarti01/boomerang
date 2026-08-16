@@ -31,6 +31,7 @@ export const authOptions: NextAuthOptions = {
           name: user.nombre ?? user.usuario,
           usuario: user.usuario,
           rol: user.rol,
+          cobradorId: user.cobradorId,
         } as any;
       },
     }),
@@ -41,6 +42,7 @@ export const authOptions: NextAuthOptions = {
         token.id = (user as any).id;
         token.usuario = (user as any).usuario;
         token.rol = (user as any).rol;
+        token.cobradorId = (user as any).cobradorId ?? null;
       }
       return token;
     },
@@ -49,6 +51,7 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).id = token.id;
         (session.user as any).usuario = token.usuario;
         (session.user as any).rol = token.rol;
+        (session.user as any).cobradorId = token.cobradorId ?? null;
       }
       return session;
     },

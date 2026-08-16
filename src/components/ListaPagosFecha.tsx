@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import QuitarAsignacion from "@/components/QuitarAsignacion";
 
 type PagoFecha = {
   id: string;
@@ -8,6 +9,7 @@ type PagoFecha = {
   banco: string;
   contenedorNombre: string | null;
   cobradorNombre: string | null;
+  asignadoPorAdmin: boolean | null;
   importeUsd: number | null;
   importeEur: number | null;
 };
@@ -77,14 +79,22 @@ export default function ListaPagosFecha({ pagos }: { pagos: PagoFecha[] }) {
               </div>
               <div className="flex items-center gap-2.5 flex-shrink-0">
                 {pago.cobradorNombre ? (
-                  <span
-                    className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-[11px] font-semibold flex-shrink-0 ${
-                      AVATAR_COLOR[pago.cobradorNombre] ?? "bg-steel"
-                    }`}
-                    title={pago.cobradorNombre}
-                  >
-                    {pago.cobradorNombre[0]}
-                  </span>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <span
+                      className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-[11px] font-semibold flex-shrink-0 ${
+                        AVATAR_COLOR[pago.cobradorNombre] ?? "bg-steel"
+                      }`}
+                      title={pago.cobradorNombre}
+                    >
+                      {pago.cobradorNombre[0]}
+                    </span>
+                    {pago.asignadoPorAdmin !== null && (
+                      <span className="text-[9.5px] font-mono text-steel">
+                        {pago.asignadoPorAdmin ? "Admin" : "Auto"}
+                      </span>
+                    )}
+                    <QuitarAsignacion pagoId={pago.id} />
+                  </div>
                 ) : (
                   <span className="text-[11px] text-alert font-mono">sin asignar</span>
                 )}

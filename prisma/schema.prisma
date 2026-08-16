@@ -12,6 +12,7 @@ datasource db {
 
 enum Rol {
   ADMIN
+  COBRADOR
 }
 
 enum EstadoContenedor {
@@ -28,12 +29,16 @@ model Usuario {
   rol          Rol      @default(ADMIN)
   creadoEn     DateTime @default(now())
 
+  cobradorId String?   @unique
+  cobrador   Cobrador? @relation("UsuarioDeCobrador", fields: [cobradorId], references: [id])
+
   cobradoresCreados      Cobrador[]      @relation("CobradorCreadoPor")
   cobradoresActualizados Cobrador[]      @relation("CobradorActualizadoPor")
   contenedoresCreados      Contenedor[]  @relation("ContenedorCreadoPor")
   contenedoresActualizados Contenedor[]  @relation("ContenedorActualizadoPor")
   pagosCreados      Pago[]              @relation("PagoCreadoPor")
   pagosActualizados Pago[]              @relation("PagoActualizadoPor")
+  pagosCobradorAsignados Pago[]         @relation("PagoCobradorAsignadoPor")
   tiposCambioCreados      TipoCambioDia[] @relation("TipoCambioCreadoPor")
   tiposCambioActualizados TipoCambioDia[] @relation("TipoCambioActualizadoPor")
 }
@@ -43,6 +48,7 @@ model Cobrador {
   nombre    String   @unique
   activo    Boolean  @default(true)
   pagos     Pago[]
+  usuarioCuenta Usuario? @relation("UsuarioDeCobrador")
 
   creadoEn        DateTime @default(now())
   creadoPorId     String?
@@ -55,7 +61,7 @@ model Cobrador {
 model Contenedor {
   id                 String           @id @default(cuid())
   nombre             String
-  codigo             String           @unique // ej. MSKU9395463
+  codigo             String           @unique
   saldoInicial       Decimal          @default(0) @db.Decimal(12, 2)
   monedaSaldoInicial String           @default("USD")
   fechaInicio        DateTime
@@ -95,7 +101,11 @@ model Pago {
   importeUsd   Decimal?    @db.Decimal(12, 2)
   tasaCambio   Decimal?    @db.Decimal(10, 4)
   banco        String      @default("Revolut")
-  idOrigen     String?     @unique // ID del movimiento en el banco, para no importar duplicados
+  idOrigen     String?     @unique
+
+  cobradorAsignadoPorId String?
+  cobradorAsignadoPor   Usuario?  @relation("PagoCobradorAsignadoPor", fields: [cobradorAsignadoPorId], references: [id])
+  cobradorAsignadoEn    DateTime?
 
   creadoEn        DateTime @default(now())
   creadoPorId     String?

@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import PendientesCobrador from "@/components/PendientesCobrador";
+import QuitarAsignacion from "@/components/QuitarAsignacion";
 import SignOutButton from "@/components/SignOutButton";
 import CompletarContenedor from "@/components/CompletarContenedor";
 
@@ -39,7 +40,7 @@ export default async function DashboardPage() {
     where: { estado: "ACTIVO" },
     include: {
       pagos: {
-        include: { cobrador: true },
+        include: { cobrador: true, cobradorAsignadoPor: true },
         orderBy: { fecha: "desc" },
       },
     },
@@ -61,7 +62,6 @@ export default async function DashboardPage() {
   const saldoInicial = Number(contenedor.saldoInicial);
   const totalFactura = Number(contenedor.totalFactura);
 
-  // Solo los pagos ya asociados a este contenedor cuentan para el recibido.
   const pagosDelContenedor = contenedor.pagos.filter((p) => p.importeUsd !== null);
   const pagosSinConversion = contenedor.pagos.filter((p) => p.importeUsd === null);
   const sumaPagos = round2(pagosDelContenedor.reduce((sum, p) => sum + Number(p.importeUsd), 0));
@@ -234,9 +234,17 @@ export default async function DashboardPage() {
                 </div>
               </div>
               {pago.cobrador ? (
-                <span className="inline-flex items-center gap-1.5 bg-teal-bg text-[#0F5D45] text-xs font-semibold px-2.5 py-1.5 rounded-full font-mono before:content-['✓'] before:text-[11px]">
-                  {pago.cobrador.nombre}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 bg-teal-bg text-[#0F5D45] text-xs font-semibold px-2.5 py-1.5 rounded-full font-mono before:content-['✓'] before:text-[11px]">
+                    {pago.cobrador.nombre}
+                    {pago.cobradorAsignadoPor && (
+                      <span className="opacity-60 font-normal">
+                        · {pago.cobradorAsignadoPor.rol === "ADMIN" ? "Admin" : "Auto"}
+                      </span>
+                    )}
+                  </span>
+                  <QuitarAsignacion pagoId={pago.id} />
+                </div>
               ) : (
                 <span className="text-xs text-alert font-mono">sin asignar</span>
               )}

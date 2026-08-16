@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import QuitarAsignacion from "@/components/QuitarAsignacion";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +32,7 @@ export default async function DetalleCobradorPage({ params }: { params: { id: st
 
   const pagos = await prisma.pago.findMany({
     where: { cobradorId: params.id },
-    include: { contenedor: true },
+    include: { contenedor: true, cobradorAsignadoPor: true },
     orderBy: [{ fecha: "asc" }, { persona: "asc" }],
   });
 
@@ -84,10 +85,14 @@ export default async function DetalleCobradorPage({ params }: { params: { id: st
                   <div className="font-mono text-xs text-steel mt-0.5">
                     {pago.fecha.toLocaleDateString("es-ES")} · {pago.banco} ·{" "}
                     {pago.contenedor?.nombre ?? "sin contenedor"}
+                    {pago.cobradorAsignadoPor && (
+                      <> · {pago.cobradorAsignadoPor.rol === "ADMIN" ? "asignado por Admin" : "autoasignado"}</>
+                    )}
                   </div>
                 </div>
-                <div className="font-mono font-semibold whitespace-nowrap text-[13.5px] flex-shrink-0">
+                <div className="font-mono font-semibold whitespace-nowrap text-[13.5px] flex-shrink-0 flex items-center gap-2">
                   {formatImporte(pago)}
+                  <QuitarAsignacion pagoId={pago.id} />
                 </div>
               </div>
             ))}

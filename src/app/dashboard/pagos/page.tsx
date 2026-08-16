@@ -26,7 +26,7 @@ export default async function PagosPorFechaPage({
 
   const pagos = await prisma.pago.findMany({
     where: { fecha: new Date(fecha) },
-    include: { cobrador: true, contenedor: true },
+    include: { cobrador: true, contenedor: true, cobradorAsignadoPor: true },
     orderBy: { persona: "asc" },
   });
 
@@ -40,6 +40,7 @@ export default async function PagosPorFechaPage({
     banco: p.banco,
     contenedorNombre: p.contenedor?.nombre ?? null,
     cobradorNombre: p.cobrador?.nombre ?? null,
+    asignadoPorAdmin: p.cobradorAsignadoPor ? p.cobradorAsignadoPor.rol === "ADMIN" : null,
     importeUsd: p.importeUsd !== null ? Number(p.importeUsd) : null,
     importeEur: p.importeEur !== null ? Number(p.importeEur) : null,
   }));
