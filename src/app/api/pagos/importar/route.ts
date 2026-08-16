@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { detectarBancoEnFilasCrudas, filasCrudasAObjetos, bancosSoportados } from "@/lib/importers";
+import { esFicheroTipoCambioBDE, procesarTipoCambioBDE } from "@/lib/importers/tipoCambio";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
 
@@ -10,8 +11,6 @@ function fechaISO(d: Date) {
   return d.toISOString().slice(0, 10);
 }
 
-// Convierte celdas de tipo Date a texto YYYY-MM-DD, para que todos los
-// parsers de banco trabajen siempre con el mismo tipo de dato en las fechas.
 function normalizarFechasEnGrid(grid: any[][]): any[][] {
   return grid.map((fila) =>
     (fila || []).map((celda) => (celda instanceof Date ? fechaISO(celda) : celda))
@@ -63,11 +62,54 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "El fichero está vacío" }, { status: 400 });
   }
 
+  if (esFicheroTipoCambioBDE(grid)) {
+    const tasas = procesarTipoCambioBDE(grid);
+
+    if (tasas.length === 0) {
+      return NextResponse.json({
+        tipo: "tipoCambio",
+        totalFichero: 0,
+        nuevos: 0,
+        existentes: 0,
+        ultimaFecha: null,
+      });
+    }
+
+    const existentes = await prisma.tipoCambioDia.findMany({
+      where: { fecha: { in: tasas.map((t) => new Date(t.fecha)) } },
+      select: { fecha: true },
+    });
+    const existentesSet = new Set(existentes.map((e) => fechaISO(e.fecha)));
+    const nuevas = tasas.filter((t) => !existentesSet.has(t.fecha));
+
+    if (nuevas.length > 0) {
+      await prisma.tipoCambioDia.createMany({
+        data: nuevas.map((t) => ({
+          fecha: new Date(t.fecha),
+          usdPorEur: t.usdPorEur,
+          creadoPorId: usuarioId,
+          actualizadoPorId: usuarioId,
+        })),
+        skipDuplicates: true,
+      });
+    }
+
+    const ultimo = await prisma.tipoCambioDia.aggregate({ _max: { fecha: true } });
+
+    return NextResponse.json({
+      tipo: "tipoCambio",
+      totalFichero: tasas.length,
+      nuevos: nuevas.length,
+      existentes: tasas.length - nuevas.length,
+      ultimaFecha: ultimo._max.fecha ? fechaISO(ultimo._max.fecha) : null,
+    });
+  }
+
   const deteccion = detectarBancoEnFilasCrudas(grid);
   if (!deteccion) {
     return NextResponse.json(
       {
-        error: `No se reconoce el formato de este fichero. Bancos soportados de momento: ${bancosSoportados().join(", ")}.`,
+        error: `No se reconoce el formato de este fichero. Bancos soportados de momento: ${bancosSoportados().join(", ")}. También puedes importar el fichero de tipos de cambio del Banco de España.`,
       },
       { status: 400 }
     );
@@ -84,29 +126,26 @@ export async function POST(req: NextRequest) {
 
   if (detectados.length === 0) {
     return NextResponse.json({
+      tipo: "pagos",
       banco: parser.banco,
       contenedor: contenedor.nombre,
       totalFichero: filas.length,
       nuevos: 0,
       duplicados: 0,
-      anterioresAlUltimo: 0,
+      anterioresAlInicio: 0,
       sinTasa: 0,
       pagosNuevos: [],
     });
   }
 
-  // Salvaguarda clave: nunca importamos pagos con fecha igual o anterior al
-  // último pago ya registrado en BBDD para este banco. Esto evita que, si se
-  // sube por error un fichero con un rango de fechas más amplio del que toca,
-  // se cuelen pagos históricos que en realidad pertenecen a otro contenedor.
-  const ultimoPago = await prisma.pago.aggregate({
-    where: { banco: parser.banco },
-    _max: { fecha: true },
-  });
-  const fechaCorte = ultimoPago._max.fecha ? fechaISO(ultimoPago._max.fecha) : null;
-
-  const dentroDeRango = fechaCorte ? detectados.filter((d) => d.fecha > fechaCorte) : detectados;
-  const anterioresAlUltimo = detectados.length - dentroDeRango.length;
+  // Salvaguarda clave: nunca se registra un pago con fecha ANTERIOR a la
+  // fecha de inicio del contenedor activo (regla de negocio: un contenedor
+  // nunca puede tener un pago de antes de que empezara). La deduplicación
+  // por idOrigen (más abajo) es la que garantiza que todo pago que no exista
+  // ya en BBDD se registre, sin depender de qué fecha tenga.
+  const fechaInicioContenedor = fechaISO(contenedor.fechaInicio);
+  const dentroDeRango = detectados.filter((d) => d.fecha >= fechaInicioContenedor);
+  const anterioresAlInicio = detectados.length - dentroDeRango.length;
 
   const idsExistentes = new Set(
     (
@@ -165,12 +204,13 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({
+    tipo: "pagos",
     banco: parser.banco,
     contenedor: contenedor.nombre,
     totalFichero: filas.length,
     nuevos: pagosNuevos.length,
     duplicados,
-    anterioresAlUltimo,
+    anterioresAlInicio,
     sinTasa,
     pagosNuevos: pagosNuevos.map((p) => ({
       persona: p.persona,

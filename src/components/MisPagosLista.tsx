@@ -65,7 +65,10 @@ export default function MisPagosLista({ pagos }: { pagos: Pago[] }) {
         grupos.map((g) => (
           <div key={g.nombre} className="mb-6">
             <div className="flex items-center justify-between mb-2">
-              <div className="font-display font-semibold text-[15px]">{g.nombre}</div>
+              <div>
+                <div className="font-display font-semibold text-[15px]">{g.nombre}</div>
+                <div className="font-mono text-[11px] text-steel">{g.pagos.length} pago(s)</div>
+              </div>
               <div className="text-right">
                 <div className="font-mono text-[10.5px] text-steel uppercase">Total cobrado</div>
                 <div className="font-mono font-bold text-[15px]">{formatUsd(g.total)}</div>

@@ -8,14 +8,6 @@ import TabsCobrador from "@/components/TabsCobrador";
 
 export const dynamic = "force-dynamic";
 
-function round2(n: number) {
-  return Math.round((n + Number.EPSILON) * 100) / 100;
-}
-
-function formatUsd(n: number) {
-  return round2(n).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " $";
-}
-
 export default async function MisPagosPage({
   searchParams,
 }: {
@@ -42,10 +34,6 @@ export default async function MisPagosPage({
     include: { contenedor: true },
     orderBy: { fecha: "desc" },
   });
-
-  const totalMio = round2(
-    misPagos.reduce((sum, p) => sum + (p.importeUsd !== null ? Number(p.importeUsd) : 0), 0)
-  );
 
   const pagos = misPagos.map((p) => ({
     id: p.id,
@@ -78,18 +66,11 @@ export default async function MisPagosPage({
 
         <TabsCobrador activo="pagos" />
 
-        <div className="bg-gradient-to-br from-navy-950 to-navy-800 text-white rounded-2xl p-5 mb-5">
-          <div className="font-mono text-[11px] text-steel-light mb-0.5">
-            TOTAL COBRADO{fecha ? ` · ${new Date(fecha).toLocaleDateString("es-ES")}` : ""}
-          </div>
-          <div className="font-mono text-[26px] font-semibold">{formatUsd(totalMio)}</div>
-          <div className="font-mono text-[11.5px] text-steel-light mt-1">
-            {misPagos.length} pago(s) asignados
-          </div>
-        </div>
-
-        <div className="mb-4">
+        <div className="flex items-center justify-between gap-3 mb-4">
           <FiltroFecha basePath="/mi/pagos" fecha={fecha} />
+          <div className="font-mono text-[12px] text-steel">
+            {misPagos.length} pago(s){fecha ? ` · ${new Date(fecha).toLocaleDateString("es-ES")}` : ""}
+          </div>
         </div>
 
         <MisPagosLista pagos={pagos} />

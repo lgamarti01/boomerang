@@ -48,6 +48,11 @@ export default async function DashboardPage() {
 
   const cobradores = await prisma.cobrador.findMany({ where: { activo: true } });
 
+  const ultimoTipoCambio = await prisma.tipoCambioDia.aggregate({ _max: { fecha: true } });
+  const ultimaFechaTipoCambio = ultimoTipoCambio._max.fecha
+    ? ultimoTipoCambio._max.fecha.toLocaleDateString("es-ES")
+    : null;
+
   if (!contenedor) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6 text-center">
@@ -115,6 +120,12 @@ export default async function DashboardPage() {
         >
           <span>📅</span> Pagos por fecha
         </Link>
+        <Link
+          href="/dashboard/usuarios"
+          className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-steel-light text-[13.5px] font-medium hover:bg-white/5"
+        >
+          <span>👤</span> Usuarios
+        </Link>
       </div>
 
       <main className="max-w-3xl mx-auto md:mx-0 w-full px-4 py-5 md:px-10 md:py-8">
@@ -126,6 +137,12 @@ export default async function DashboardPage() {
             <h2 className="font-display text-[22px] font-semibold">Inicio</h2>
           </div>
           <div className="flex-shrink-0 flex items-center gap-2">
+            <Link
+              href="/dashboard/usuarios"
+              className="flex items-center gap-1.5 px-3.5 py-2.5 border border-line bg-white text-[13px] font-semibold rounded-lg"
+            >
+              👤
+            </Link>
             <Link
               href="/dashboard/pagos"
               className="flex items-center gap-1.5 px-3.5 py-2.5 border border-line bg-white text-[13px] font-semibold rounded-lg"
@@ -147,6 +164,9 @@ export default async function DashboardPage() {
             <div>
               <div className="font-display font-semibold text-[19px]">{contenedor.nombre}</div>
               <div className="font-mono text-[11.5px] text-steel-light mt-0.5">{contenedor.codigo}</div>
+              <div className="font-mono text-[11px] text-steel-light mt-1">
+                Pagos desde el {contenedor.fechaInicio.toLocaleDateString("es-ES")}
+              </div>
             </div>
             <span className="font-mono text-[11px] font-semibold uppercase tracking-wide px-2.5 py-1 rounded border border-[#3FC79A] text-[#3FC79A] bg-teal/20">
               {contenedor.estado === "ACTIVO" ? "Activo" : contenedor.estado}
@@ -189,6 +209,9 @@ export default async function DashboardPage() {
           <div className="bg-amber/10 border border-amber/30 rounded-xl p-3.5 mb-4 text-[13px] text-amber-ink">
             <b className="font-mono">{pagosSinConversion.length} pago(s)</b> sin tipo de cambio ese día
             todavía — no cuentan en el total recibido hasta que se cargue la tasa correspondiente.
+            {ultimaFechaTipoCambio && (
+              <div className="mt-1 opacity-80">Tipo de cambio cargado hasta el {ultimaFechaTipoCambio}.</div>
+            )}
           </div>
         )}
 
