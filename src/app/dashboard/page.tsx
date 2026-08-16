@@ -279,6 +279,7 @@ export default async function DashboardPage({
               pagos={pendientes.map((p) => ({
                 id: p.id,
                 persona: p.persona,
+                fecha: p.fecha.toISOString().slice(0, 10),
                 fechaStr: p.fecha.toLocaleDateString("es-ES"),
                 banco: p.banco,
                 importeUsd: p.importeUsd !== null ? Number(p.importeUsd) : null,

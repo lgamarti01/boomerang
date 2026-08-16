@@ -8,6 +8,7 @@ type Cobrador = { id: string; nombre: string };
 type PagoPendiente = {
   id: string;
   persona: string;
+  fecha: string; // YYYY-MM-DD
   fechaStr: string;
   banco: string;
   importeUsd: number | null;
@@ -38,26 +39,46 @@ export default function PendientesCobrador({
   cobradores: Cobrador[];
 }) {
   const [busqueda, setBusqueda] = useState("");
+  const [fechaFiltro, setFechaFiltro] = useState("");
 
   const filtrados = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
-    if (!q) return pagos;
-    return pagos.filter((p) => p.persona.toLowerCase().includes(q));
-  }, [busqueda, pagos]);
+    return pagos.filter((p) => {
+      const coincideNombre = !q || p.persona.toLowerCase().includes(q);
+      const coincideFecha = !fechaFiltro || p.fecha === fechaFiltro;
+      return coincideNombre && coincideFecha;
+    });
+  }, [busqueda, fechaFiltro, pagos]);
 
   return (
     <div>
-      <input
-        type="text"
-        value={busqueda}
-        onChange={(e) => setBusqueda(e.target.value)}
-        placeholder="Buscar por nombre..."
-        className="w-full px-3.5 py-2.5 bg-white border border-line rounded-lg text-[13.5px] outline-none focus:border-navy-800 mb-3"
-      />
+      <div className="flex gap-2 mb-3">
+        <input
+          type="text"
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          placeholder="Buscar por nombre..."
+          className="flex-1 min-w-0 px-3.5 py-2.5 bg-white border border-line rounded-lg text-[13.5px] outline-none focus:border-navy-800"
+        />
+        <input
+          type="date"
+          value={fechaFiltro}
+          onChange={(e) => setFechaFiltro(e.target.value)}
+          className="flex-shrink-0 px-2.5 py-2.5 bg-white border border-line rounded-lg text-[13px] font-mono outline-none focus:border-navy-800"
+        />
+        {fechaFiltro && (
+          <button
+            onClick={() => setFechaFiltro("")}
+            className="flex-shrink-0 px-2.5 text-[11px] font-mono text-steel underline underline-offset-2"
+          >
+            Ver todas
+          </button>
+        )}
+      </div>
 
       {filtrados.length === 0 && (
         <div className="text-[13px] text-steel py-4 text-center">
-          No hay pagos pendientes que coincidan con "{busqueda}".
+          No hay pagos pendientes que coincidan con los filtros.
         </div>
       )}
 
