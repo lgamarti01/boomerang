@@ -13,6 +13,10 @@ function formatUsd(n: number) {
   return round2(n).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " $";
 }
 
+function formatEur(n: number) {
+  return round2(n).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+}
+
 function hoyISO() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -42,6 +46,9 @@ export default async function PagosPorFechaPage({
 
   const totalUsd = round2(
     pagos.reduce((sum, p) => sum + (p.importeUsd !== null ? Number(p.importeUsd) : 0), 0)
+  );
+  const totalEur = round2(
+    pagos.reduce((sum, p) => sum + (p.importeEur !== null ? Number(p.importeEur) : 0), 0)
   );
 
   const pagosSimplificados = pagos.map((p) => {
@@ -81,6 +88,7 @@ export default async function PagosPorFechaPage({
           <div className="text-right">
             <div className="font-mono text-[11px] text-steel uppercase">Total ese día</div>
             <div className="font-mono font-bold text-lg">{formatUsd(totalUsd)}</div>
+            <div className="font-mono text-[12px] text-steel">{formatEur(totalEur)}</div>
           </div>
         </div>
 

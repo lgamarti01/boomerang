@@ -173,7 +173,7 @@ export default function MisPagosLista({ pagos }: { pagos: Pago[] }) {
                             <>
                               {" "}
                               · tasa {pago.tasaCambio.toLocaleString("es-ES", { minimumFractionDigits: 4 })}
-                              {pago.fechaTasaCambio && pago.fechaTasaCambio !== pago.fecha && (
+                              {pago.fechaTasaCambio && (
                                 <> ({new Date(pago.fechaTasaCambio).toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit" })})</>
                               )}
                             </>
