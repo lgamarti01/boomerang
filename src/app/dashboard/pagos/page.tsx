@@ -69,6 +69,9 @@ export default async function PagosPorFechaPage({
       etiquetaAsignacion,
       importeUsd: p.importeUsd !== null ? Number(p.importeUsd) : null,
       importeEur: p.importeEur !== null ? Number(p.importeEur) : null,
+      tasaCambio: p.tasaCambio !== null ? Number(p.tasaCambio) : null,
+      fechaTasaCambio: p.fechaTasaCambio ? p.fechaTasaCambio.toISOString().slice(0, 10) : null,
+      monedaOriginal: p.monedaOriginal,
     };
   });
 
@@ -87,8 +90,11 @@ export default async function PagosPorFechaPage({
           <SelectorFecha fecha={fecha} />
           <div className="text-right">
             <div className="font-mono text-[11px] text-steel uppercase">Total ese día</div>
-            <div className="font-mono font-bold text-lg">{formatUsd(totalUsd)}</div>
-            <div className="font-mono text-[12px] text-steel">{formatEur(totalEur)}</div>
+            <div className="font-mono font-bold text-lg flex items-center gap-2 justify-end">
+              <span>{formatUsd(totalUsd)}</span>
+              <span className="text-steel">·</span>
+              <span>{formatEur(totalEur)}</span>
+            </div>
           </div>
         </div>
 
