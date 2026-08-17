@@ -26,7 +26,7 @@ export default async function MisPagosPage() {
   const misPagos = await prisma.pago.findMany({
     where: { cobradorId },
     include: { contenedor: true, cobrador: true, cobradorAsignadoPor: true },
-    orderBy: { fecha: "desc" },
+    orderBy: { persona: "asc" },
   });
 
   const pagos = misPagos.map((p) => {

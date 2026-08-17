@@ -217,9 +217,22 @@ export default async function DashboardPage({
                 Pagos desde el {contenedor.fechaInicio.toLocaleDateString("es-ES")}
               </div>
             </div>
-            <span className="font-mono text-[11px] font-semibold uppercase tracking-wide px-2.5 py-1 rounded border border-[#3FC79A] text-[#3FC79A] bg-teal/20">
-              {contenedor.estado === "ACTIVO" ? "Activo" : contenedor.estado}
-            </span>
+            <div className="flex items-center gap-2">
+              <a
+                href={`/api/contenedores/${contenedor.id}/exportar`}
+                title="Descargar Excel de este contenedor"
+                className="w-7 h-7 flex items-center justify-center rounded-md border border-white/15 bg-white/5 hover:bg-white/10 text-white/90"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+              </a>
+              <span className="font-mono text-[11px] font-semibold uppercase tracking-wide px-2.5 py-1 rounded border border-[#3FC79A] text-[#3FC79A] bg-teal/20">
+                {contenedor.estado === "ACTIVO" ? "Activo" : contenedor.estado}
+              </span>
+            </div>
           </div>
 
           <div className="mb-4">
