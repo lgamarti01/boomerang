@@ -18,7 +18,6 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     where: { id: params.id },
     include: {
       pagos: {
-        include: { cobrador: true, cobradorAsignadoPor: true },
         orderBy: [{ fecha: "asc" }, { persona: "asc" }],
       },
     },
@@ -60,18 +59,9 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     "Tasa de cambio",
     "Fecha de la tasa",
     "Moneda original",
-    "Cobrador",
-    "Asignado por",
-    "Fecha de asignación",
   ];
 
   const filas = contenedor.pagos.map((p) => {
-    let asignadoPor = "";
-    if (p.cobradorAsignadoPor) {
-      if (p.cobradorAsignadoPor.rol === "ADMIN") asignadoPor = "Admin";
-      else if (p.cobradorAsignadoPor.cobradorId === p.cobradorId) asignadoPor = "Autoasignado";
-      else asignadoPor = `Por ${p.cobradorAsignadoPor.nombre ?? "otro cobrador"}`;
-    }
     return [
       p.fecha.toLocaleDateString("es-ES"),
       p.persona,
@@ -81,17 +71,26 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
       p.tasaCambio !== null ? Number(p.tasaCambio) : "",
       p.fechaTasaCambio ? p.fechaTasaCambio.toLocaleDateString("es-ES") : "",
       p.monedaOriginal,
-      p.cobrador?.nombre ?? "sin asignar",
-      asignadoPor,
-      p.cobradorAsignadoEn ? p.cobradorAsignadoEn.toLocaleDateString("es-ES") : "",
     ];
   });
 
-  const wsPagos = XLSX.utils.aoa_to_sheet([cabecera, ...filas]);
+  const wsPagos = XLSX.utils.aoa_to_sheet([
+    cabecera,
+    ...filas,
+    ["", "SALDO INICIAL (no es un pago de cliente)", "", "", saldoInicial, "", "", ""],
+    ["", "TOTAL RECIBIDO", "", "", recibido, "", "", ""],
+  ]);
   wsPagos["!cols"] = [
     { wch: 11 }, { wch: 28 }, { wch: 10 }, { wch: 12 }, { wch: 12 },
-    { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 16 }, { wch: 16 },
+    { wch: 12 }, { wch: 14 }, { wch: 14 },
   ];
+
+  for (let fila = 1; fila <= filas.length; fila++) {
+    const direccion = XLSX.utils.encode_cell({ r: fila, c: 5 });
+    if (wsPagos[direccion] && typeof wsPagos[direccion].v === "number") {
+      wsPagos[direccion].z = "0.0000";
+    }
+  }
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, wsResumen, "Resumen");
