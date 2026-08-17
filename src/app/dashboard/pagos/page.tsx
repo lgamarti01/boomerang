@@ -44,17 +44,26 @@ export default async function PagosPorFechaPage({
     pagos.reduce((sum, p) => sum + (p.importeUsd !== null ? Number(p.importeUsd) : 0), 0)
   );
 
-  const pagosSimplificados = pagos.map((p) => ({
-    id: p.id,
-    persona: p.persona,
-    banco: p.banco,
-    contenedorId: p.contenedorId,
-    contenedorNombre: p.contenedor?.nombre ?? null,
-    cobradorNombre: p.cobrador?.nombre ?? null,
-    asignadoPorAdmin: p.cobradorAsignadoPor ? p.cobradorAsignadoPor.rol === "ADMIN" : null,
-    importeUsd: p.importeUsd !== null ? Number(p.importeUsd) : null,
-    importeEur: p.importeEur !== null ? Number(p.importeEur) : null,
-  }));
+  const pagosSimplificados = pagos.map((p) => {
+    let etiquetaAsignacion: string | null = null;
+    if (p.cobradorAsignadoPor) {
+      if (p.cobradorAsignadoPor.rol === "ADMIN") etiquetaAsignacion = "Admin";
+      else if (p.cobradorAsignadoPor.cobradorId && p.cobradorAsignadoPor.cobradorId === p.cobradorId)
+        etiquetaAsignacion = "Auto";
+      else etiquetaAsignacion = p.cobradorAsignadoPor.nombre ? `Por ${p.cobradorAsignadoPor.nombre}` : "Otro";
+    }
+    return {
+      id: p.id,
+      persona: p.persona,
+      banco: p.banco,
+      contenedorId: p.contenedorId,
+      contenedorNombre: p.contenedor?.nombre ?? null,
+      cobradorNombre: p.cobrador?.nombre ?? null,
+      etiquetaAsignacion,
+      importeUsd: p.importeUsd !== null ? Number(p.importeUsd) : null,
+      importeEur: p.importeEur !== null ? Number(p.importeEur) : null,
+    };
+  });
 
   return (
     <div className="min-h-screen">

@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
   const usuarioId = (session.user as any).id as string;
 
   const body = await req.json();
-  const { nombre, codigo, saldoInicial, monedaSaldoInicial, fechaInicio, totalFactura, estado } = body;
+  const { nombre, codigo, saldoInicial, monedaSaldoInicial, fechaInicio, totalFactura, monedaTotalFactura, estado } = body;
 
   if (!nombre || !fechaInicio || totalFactura === undefined || totalFactura === null) {
     return NextResponse.json({ error: "Faltan campos obligatorios" }, { status: 400 });
@@ -26,6 +26,7 @@ export async function POST(req: NextRequest) {
         monedaSaldoInicial: monedaSaldoInicial || "USD",
         fechaInicio: new Date(fechaInicio),
         totalFactura,
+        monedaTotalFactura: monedaTotalFactura || "USD",
         estado: estado || "ACTIVO",
         creadoPorId: usuarioId,
         actualizadoPorId: usuarioId,

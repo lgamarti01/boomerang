@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { detectarBancoEnFilasCrudas, filasCrudasAObjetos, bancosSoportados } from "@/lib/importers";
 import { esFicheroTipoCambioBDE, procesarTipoCambioBDE } from "@/lib/importers/tipoCambio";
+import { obtenerTasasOrdenadas, buscarTasaConFecha, recalcularPagosConTasaMejorable } from "@/lib/tipoCambio";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
 
@@ -96,12 +97,15 @@ export async function POST(req: NextRequest) {
 
     const ultimo = await prisma.tipoCambioDia.aggregate({ _max: { fecha: true } });
 
+    const pagosRecalculados = await recalcularPagosConTasaMejorable(usuarioId);
+
     return NextResponse.json({
       tipo: "tipoCambio",
       totalFichero: tasas.length,
       nuevos: nuevas.length,
       existentes: tasas.length - nuevas.length,
       ultimaFecha: ultimo._max.fecha ? fechaISO(ultimo._max.fecha) : null,
+      pagosRecalculados,
     });
   }
 
@@ -138,11 +142,6 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // Salvaguarda clave: nunca se registra un pago con fecha ANTERIOR a la
-  // fecha de inicio del contenedor activo (regla de negocio: un contenedor
-  // nunca puede tener un pago de antes de que empezara). La deduplicación
-  // por idOrigen (más abajo) es la que garantiza que todo pago que no exista
-  // ya en BBDD se registre, sin depender de qué fecha tenga.
   const fechaInicioContenedor = fechaISO(contenedor.fechaInicio);
   const dentroDeRango = detectados.filter((d) => d.fecha >= fechaInicioContenedor);
   const anterioresAlInicio = detectados.length - dentroDeRango.length;
@@ -159,11 +158,7 @@ export async function POST(req: NextRequest) {
   const nuevos = dentroDeRango.filter((d) => !idsExistentes.has(d.idOrigen));
   const duplicados = dentroDeRango.length - nuevos.length;
 
-  const fechasUnicas = Array.from(new Set(nuevos.map((n) => n.fecha)));
-  const tasas = await prisma.tipoCambioDia.findMany({
-    where: { fecha: { in: fechasUnicas.map((f) => new Date(f)) } },
-  });
-  const tasaPorFecha = new Map(tasas.map((t) => [fechaISO(t.fecha), Number(t.usdPorEur)]));
+  const tasasOrdenadas = await obtenerTasasOrdenadas();
 
   let sinTasa = 0;
   const pagosNuevos: any[] = [];
@@ -171,19 +166,19 @@ export async function POST(req: NextRequest) {
   const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
   for (const d of nuevos) {
-    const tasa = tasaPorFecha.get(d.fecha) ?? null;
+    const encontrada = buscarTasaConFecha(tasasOrdenadas, d.fecha);
     const importeOriginal = round2(d.importe);
     let importeEur: number | null = null;
     let importeUsd: number | null = null;
 
     if (d.moneda === "EUR") {
       importeEur = importeOriginal;
-      importeUsd = tasa !== null ? round2(importeOriginal * tasa) : null;
+      importeUsd = encontrada !== null ? round2(importeOriginal * encontrada.valor) : null;
     } else if (d.moneda === "USD") {
       importeUsd = importeOriginal;
-      importeEur = tasa !== null ? round2(importeOriginal / tasa) : null;
+      importeEur = encontrada !== null ? round2(importeOriginal / encontrada.valor) : null;
     }
-    if (tasa === null) sinTasa++;
+    if (encontrada === null) sinTasa++;
 
     pagosNuevos.push({
       contenedorId: contenedor.id,
@@ -191,7 +186,9 @@ export async function POST(req: NextRequest) {
       persona: d.persona,
       importeEur,
       importeUsd,
-      tasaCambio: tasa,
+      tasaCambio: encontrada?.valor ?? null,
+      fechaTasaCambio: encontrada ? new Date(encontrada.fechaTasa) : null,
+      monedaOriginal: d.moneda,
       banco: d.banco,
       idOrigen: d.idOrigen,
       creadoPorId: usuarioId,

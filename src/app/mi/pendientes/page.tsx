@@ -2,21 +2,15 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import SignOutButton from "@/components/SignOutButton";
-import PendientesAutoasignar from "@/components/PendientesAutoasignar";
-import FiltroFecha from "@/components/FiltroFecha";
+import PendientesCobrador from "@/components/PendientesCobrador";
 import TabsCobrador from "@/components/TabsCobrador";
 
 export const dynamic = "force-dynamic";
 
-export default async function PendientesPage({
-  searchParams,
-}: {
-  searchParams: { fecha?: string };
-}) {
+export default async function PendientesPage() {
   const session = await getServerSession(authOptions);
   const cobradorId = (session?.user as any)?.cobradorId as string | null;
   const nombre = session?.user?.name ?? "";
-  const fecha = searchParams.fecha;
 
   if (!cobradorId) {
     return (
@@ -30,19 +24,23 @@ export default async function PendientesPage({
   }
 
   const pendientesRaw = await prisma.pago.findMany({
-    where: { cobradorId: null, ...(fecha ? { fecha: new Date(fecha) } : {}) },
-    include: { contenedor: true },
+    where: { cobradorId: null },
     orderBy: { fecha: "desc" },
   });
+
+  const cobradores = await prisma.cobrador.findMany({ where: { activo: true } });
 
   const pendientes = pendientesRaw.map((p) => ({
     id: p.id,
     persona: p.persona,
+    fecha: p.fecha.toISOString().slice(0, 10),
     fechaStr: p.fecha.toLocaleDateString("es-ES"),
     banco: p.banco,
     importeUsd: p.importeUsd !== null ? Number(p.importeUsd) : null,
     importeEur: p.importeEur !== null ? Number(p.importeEur) : null,
-    contenedorNombre: p.contenedor?.nombre ?? null,
+    tasaCambio: p.tasaCambio !== null ? Number(p.tasaCambio) : null,
+    fechaTasaCambio: p.fechaTasaCambio ? p.fechaTasaCambio.toISOString().slice(0, 10) : null,
+    monedaOriginal: p.monedaOriginal,
   }));
 
   return (
@@ -65,12 +63,9 @@ export default async function PendientesPage({
 
         <TabsCobrador activo="pendientes" />
 
-        <div className="flex items-center justify-between gap-3 mb-4">
-          <FiltroFecha basePath="/mi/pendientes" fecha={fecha} />
-          <div className="font-mono text-[12px] text-steel">{pendientes.length} pago(s)</div>
-        </div>
+        <div className="font-mono text-[12px] text-steel mb-4">{pendientes.length} pago(s) en total</div>
 
-        <PendientesAutoasignar pagos={pendientes} cobradorId={cobradorId} />
+        <PendientesCobrador pagos={pendientes} cobradores={cobradores} />
       </main>
     </div>
   );

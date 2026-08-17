@@ -29,6 +29,7 @@ export default async function EditarContenedorPage({ params }: { params: { id: s
             monedaSaldoInicial: contenedor.monedaSaldoInicial,
             fechaInicio: contenedor.fechaInicio.toISOString().slice(0, 10),
             totalFactura: String(contenedor.totalFactura),
+            monedaTotalFactura: contenedor.monedaTotalFactura,
             estado: contenedor.estado,
           }}
         />

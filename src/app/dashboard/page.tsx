@@ -28,10 +28,28 @@ function formatEur(n: number) {
   return round2(n).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
 }
 
+function formatEnMoneda(valorUsd: number, moneda: string, tasaUsdPorEur: number | null) {
+  if (moneda === "EUR" && tasaUsdPorEur) {
+    return formatEur(valorUsd / tasaUsdPorEur);
+  }
+  return formatUsd(valorUsd);
+}
+
 function formatImporte(pago: { importeUsd: any; importeEur: any }) {
   if (pago.importeUsd !== null) return formatUsd(Number(pago.importeUsd));
   if (pago.importeEur !== null) return formatEur(Number(pago.importeEur)) + " (sin tasa)";
   return "—";
+}
+
+function etiquetaAsignacion(pago: {
+  cobradorId: string | null;
+  cobradorAsignadoPor: { rol: string; cobradorId: string | null; nombre: string | null } | null;
+}): string | null {
+  const a = pago.cobradorAsignadoPor;
+  if (!a) return null;
+  if (a.rol === "ADMIN") return "Admin";
+  if (a.cobradorId && a.cobradorId === pago.cobradorId) return "Auto";
+  return a.nombre ? `Por ${a.nombre}` : "Otro";
 }
 
 export default async function DashboardPage({
@@ -68,10 +86,9 @@ export default async function DashboardPage({
     orderBy: { creadoEn: "desc" },
   });
 
-  const ultimoTipoCambio = await prisma.tipoCambioDia.aggregate({ _max: { fecha: true } });
-  const ultimaFechaTipoCambio = ultimoTipoCambio._max.fecha
-    ? ultimoTipoCambio._max.fecha.toLocaleDateString("es-ES")
-    : null;
+  const ultimoTipoCambio = await prisma.tipoCambioDia.findFirst({ orderBy: { fecha: "desc" } });
+  const ultimaFechaTipoCambio = ultimoTipoCambio ? ultimoTipoCambio.fecha.toLocaleDateString("es-ES") : null;
+  const ultimaTasa = ultimoTipoCambio ? Number(ultimoTipoCambio.usdPorEur) : null;
 
   if (!contenedor) {
     return (
@@ -86,6 +103,7 @@ export default async function DashboardPage({
 
   const saldoInicial = Number(contenedor.saldoInicial);
   const totalFactura = Number(contenedor.totalFactura);
+  const monedaTotalFactura = contenedor.monedaTotalFactura;
 
   const pagosDelContenedor = contenedor.pagos.filter((p) => p.importeUsd !== null);
   const pagosSinConversion = contenedor.pagos.filter((p) => p.importeUsd === null);
@@ -107,7 +125,6 @@ export default async function DashboardPage({
 
   return (
     <div className="min-h-screen pb-20 md:pb-0 md:grid md:grid-cols-[240px_1fr]">
-      {/* Topbar */}
       <div className="bg-navy-950 text-white px-4.5 py-4 flex items-center justify-between sticky top-0 z-20 md:col-span-2">
         <div className="font-display font-semibold text-base flex items-center gap-2">
           <span className="w-2 h-2 bg-amber rounded-sm" /> BOOMERANG
@@ -123,7 +140,6 @@ export default async function DashboardPage({
         </div>
       </div>
 
-      {/* Sidebar (desktop) */}
       <div className="hidden md:flex flex-col gap-1 bg-navy-950 text-white p-5.5">
         <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-amber/10 text-white text-[13.5px] font-medium">
           <span>▤</span> Inicio
@@ -190,7 +206,6 @@ export default async function DashboardPage({
           </div>
         </div>
 
-        {/* Hero */}
         <div className="bg-gradient-to-br from-navy-950 to-navy-800 text-white rounded-2xl p-5 mb-5">
           <div className="flex justify-between items-start mb-4">
             <div>
@@ -213,12 +228,18 @@ export default async function DashboardPage({
 
           <div className="flex justify-between items-baseline mb-2.5">
             <div>
-              <div className="font-mono text-[11px] text-steel-light mb-0.5">RECIBIDO (incl. saldo inicial)</div>
-              <div className="font-mono text-[26px] font-semibold">{formatUsd(recibido)}</div>
+              <div className="font-mono text-[11px] text-amber mb-0.5">
+                {excedente > 0 ? "EXCEDENTE" : "FALTA POR COBRAR"}
+              </div>
+              <div className="font-mono text-[26px] font-semibold">
+                {formatEnMoneda(excedente > 0 ? excedente : falta, monedaTotalFactura, ultimaTasa)}
+              </div>
             </div>
-            <div className="text-right font-mono text-[13px] text-amber">
-              {excedente > 0 ? "EXCEDENTE" : "FALTA"}
-              <div className="text-base">{formatUsd(excedente > 0 ? excedente : falta)}</div>
+            <div className="text-right font-mono text-[13px] text-steel-light">
+              RECIBIDO
+              <div className="text-base text-white">
+                {formatEnMoneda(recibido, monedaTotalFactura, ultimaTasa)}
+              </div>
             </div>
           </div>
           <div className="h-2.5 bg-white/10 rounded-full overflow-hidden">
@@ -228,8 +249,10 @@ export default async function DashboardPage({
             />
           </div>
           <div className="flex justify-between mt-2 text-[11.5px] text-steel-light font-mono">
-            <span>{pct}% cobrado · saldo inicial {formatUsd(saldoInicial)}</span>
-            <span>Total factura: {formatUsd(totalFactura)}</span>
+            <span>
+              {pct}% cobrado · saldo inicial {formatEnMoneda(saldoInicial, monedaTotalFactura, ultimaTasa)}
+            </span>
+            <span>Total factura: {formatEnMoneda(totalFactura, monedaTotalFactura, ultimaTasa)}</span>
           </div>
         </div>
 
@@ -244,8 +267,9 @@ export default async function DashboardPage({
           <div className="bg-teal-bg border border-[#CDE9DF] rounded-xl p-4 mb-4">
             <div className="text-[13px] text-[#0F5D45] mb-3">
               Este contenedor ha alcanzado el total de factura.{" "}
-              <b className="font-mono">{formatUsd(excedente)}</b> de excedente — muévelo al siguiente
-              contenedor cuando lo des de alta, y marca este como completado.
+              <b className="font-mono">{formatEnMoneda(excedente, monedaTotalFactura, ultimaTasa)}</b> de
+              excedente — muévelo al siguiente contenedor cuando lo des de alta, y marca este como
+              completado.
             </div>
             <CompletarContenedor contenedorId={contenedor.id} />
           </div>
@@ -285,6 +309,8 @@ export default async function DashboardPage({
                 importeUsd: p.importeUsd !== null ? Number(p.importeUsd) : null,
                 importeEur: p.importeEur !== null ? Number(p.importeEur) : null,
                 tasaCambio: p.tasaCambio !== null ? Number(p.tasaCambio) : null,
+                fechaTasaCambio: p.fechaTasaCambio ? p.fechaTasaCambio.toISOString().slice(0, 10) : null,
+                monedaOriginal: p.monedaOriginal,
               }))}
               cobradores={cobradores}
             />
@@ -312,10 +338,8 @@ export default async function DashboardPage({
                   <div className="flex items-center gap-2">
                     <span className="inline-flex items-center gap-1.5 bg-teal-bg text-[#0F5D45] text-xs font-semibold px-2.5 py-1.5 rounded-full font-mono before:content-['✓'] before:text-[11px]">
                       {pago.cobrador.nombre}
-                      {pago.cobradorAsignadoPor && (
-                        <span className="opacity-60 font-normal">
-                          · {pago.cobradorAsignadoPor.rol === "ADMIN" ? "Admin" : "Auto"}
-                        </span>
+                      {etiquetaAsignacion(pago) && (
+                        <span className="opacity-60 font-normal"> · {etiquetaAsignacion(pago)}</span>
                       )}
                     </span>
                     <QuitarAsignacion pagoId={pago.id} />

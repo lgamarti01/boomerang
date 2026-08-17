@@ -12,7 +12,7 @@ type PagoFecha = {
   contenedorId: string | null;
   contenedorNombre: string | null;
   cobradorNombre: string | null;
-  asignadoPorAdmin: boolean | null;
+  etiquetaAsignacion: string | null;
   importeUsd: number | null;
   importeEur: number | null;
 };
@@ -45,23 +45,35 @@ export default function ListaPagosFecha({
 }) {
   const [busqueda, setBusqueda] = useState("");
   const [filtroCobrador, setFiltroCobrador] = useState("");
+  const [montoFiltro, setMontoFiltro] = useState("");
+  const [monedaFiltro, setMonedaFiltro] = useState<"EUR" | "USD">("EUR");
 
   const filtrados = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
+    const montoBuscado = montoFiltro.trim().replace(",", ".");
+
     return pagos.filter((p) => {
       const coincideNombre = !q || p.persona.toLowerCase().includes(q);
+
       let coincideCobrador = true;
       if (filtroCobrador === SIN_ASIGNAR) coincideCobrador = !p.cobradorNombre;
       else if (filtroCobrador) coincideCobrador = p.cobradorNombre === filtroCobrador;
-      return coincideNombre && coincideCobrador;
+
+      let coincideMonto = true;
+      if (montoBuscado) {
+        const valor = monedaFiltro === "EUR" ? p.importeEur : p.importeUsd;
+        coincideMonto = valor !== null && valor.toFixed(2).includes(montoBuscado);
+      }
+
+      return coincideNombre && coincideCobrador && coincideMonto;
     });
-  }, [busqueda, filtroCobrador, pagos]);
+  }, [busqueda, filtroCobrador, montoFiltro, monedaFiltro, pagos]);
 
   const sinAsignar = pagos.filter((p) => !p.cobradorNombre).length;
 
   return (
     <div>
-      <div className="flex gap-2 mb-3">
+      <div className="flex gap-2 mb-2">
         <input
           type="text"
           value={busqueda}
@@ -72,7 +84,7 @@ export default function ListaPagosFecha({
         <select
           value={filtroCobrador}
           onChange={(e) => setFiltroCobrador(e.target.value)}
-          className="flex-shrink-0 px-2.5 py-2.5 bg-white border border-line rounded-lg text-[13px] outline-none focus:border-navy-800 max-w-[140px]"
+          className="flex-shrink-0 px-2.5 py-2.5 bg-white border border-line rounded-lg text-[13px] outline-none focus:border-navy-800 max-w-[130px]"
         >
           <option value="">Todos</option>
           <option value={SIN_ASIGNAR}>Sin asignar</option>
@@ -82,6 +94,35 @@ export default function ListaPagosFecha({
             </option>
           ))}
         </select>
+      </div>
+
+      <div className="flex gap-2 mb-3">
+        <input
+          type="text"
+          inputMode="decimal"
+          value={montoFiltro}
+          onChange={(e) => setMontoFiltro(e.target.value)}
+          placeholder="Buscar por importe..."
+          className="flex-1 min-w-0 px-3.5 py-2.5 bg-white border border-line rounded-lg text-[13.5px] font-mono outline-none focus:border-navy-800"
+        />
+        <div className="flex-shrink-0 flex border border-line rounded-lg overflow-hidden">
+          <button
+            onClick={() => setMonedaFiltro("EUR")}
+            className={`px-3 py-2.5 text-[13px] font-mono font-semibold ${
+              monedaFiltro === "EUR" ? "bg-navy-950 text-white" : "bg-white text-steel"
+            }`}
+          >
+            €
+          </button>
+          <button
+            onClick={() => setMonedaFiltro("USD")}
+            className={`px-3 py-2.5 text-[13px] font-mono font-semibold ${
+              monedaFiltro === "USD" ? "bg-navy-950 text-white" : "bg-white text-steel"
+            }`}
+          >
+            $
+          </button>
+        </div>
       </div>
 
       <div className="font-mono text-[11.5px] uppercase tracking-wide text-steel mb-3">
@@ -120,10 +161,8 @@ export default function ListaPagosFecha({
               <div className="flex items-center justify-between pt-3 border-t border-line">
                 <span className="inline-flex items-center gap-1.5 bg-teal-bg text-[#0F5D45] text-xs font-semibold px-2.5 py-1.5 rounded-full font-mono before:content-['✓'] before:text-[11px]">
                   {pago.cobradorNombre}
-                  {pago.asignadoPorAdmin !== null && (
-                    <span className="opacity-60 font-normal">
-                      · {pago.asignadoPorAdmin ? "Admin" : "Auto"}
-                    </span>
+                  {pago.etiquetaAsignacion && (
+                    <span className="opacity-60 font-normal"> · {pago.etiquetaAsignacion}</span>
                   )}
                 </span>
                 <QuitarAsignacion pagoId={pago.id} />

@@ -11,6 +11,7 @@ type ContenedorInicial = {
   monedaSaldoInicial: string;
   fechaInicio: string;
   totalFactura: string;
+  monedaTotalFactura: string;
   estado: string;
 };
 
@@ -30,6 +31,7 @@ export default function ContenedorForm({ inicial }: { inicial: ContenedorInicial
   const [monedaSaldoInicial, setMonedaSaldoInicial] = useState(inicial.monedaSaldoInicial);
   const [fechaInicio, setFechaInicio] = useState(inicial.fechaInicio);
   const [totalFactura, setTotalFactura] = useState(inicial.totalFactura);
+  const [monedaTotalFactura, setMonedaTotalFactura] = useState(inicial.monedaTotalFactura);
   const [estado, setEstado] = useState(inicial.estado);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,6 +51,7 @@ export default function ContenedorForm({ inicial }: { inicial: ContenedorInicial
       monedaSaldoInicial,
       fechaInicio,
       totalFactura: parseFloat(totalFactura),
+      monedaTotalFactura,
       estado,
     };
 
@@ -134,16 +137,29 @@ export default function ContenedorForm({ inicial }: { inicial: ContenedorInicial
         />
       </div>
 
-      <div className="mb-4">
-        <label className="block text-[11px] font-mono uppercase text-steel mb-1.5">Total factura (USD)</label>
-        <input
-          type="number"
-          step="0.01"
-          value={totalFactura}
-          onChange={(e) => setTotalFactura(e.target.value)}
-          placeholder="93600"
-          className="w-full px-3.5 py-2.5 border border-line rounded-lg text-[14px] font-mono outline-none focus:border-navy-800"
-        />
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        <div>
+          <label className="block text-[11px] font-mono uppercase text-steel mb-1.5">Total factura</label>
+          <input
+            type="number"
+            step="0.01"
+            value={totalFactura}
+            onChange={(e) => setTotalFactura(e.target.value)}
+            placeholder="93600"
+            className="w-full px-3.5 py-2.5 border border-line rounded-lg text-[14px] font-mono outline-none focus:border-navy-800"
+          />
+        </div>
+        <div>
+          <label className="block text-[11px] font-mono uppercase text-steel mb-1.5">Moneda</label>
+          <select
+            value={monedaTotalFactura}
+            onChange={(e) => setMonedaTotalFactura(e.target.value)}
+            className="w-full px-3.5 py-2.5 border border-line rounded-lg text-[14px] outline-none focus:border-navy-800 bg-white"
+          >
+            <option value="USD">USD</option>
+            <option value="EUR">EUR</option>
+          </select>
+        </div>
       </div>
 
       <div className="mb-5">

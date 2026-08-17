@@ -3,20 +3,14 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import SignOutButton from "@/components/SignOutButton";
 import MisPagosLista from "@/components/MisPagosLista";
-import FiltroFecha from "@/components/FiltroFecha";
 import TabsCobrador from "@/components/TabsCobrador";
 
 export const dynamic = "force-dynamic";
 
-export default async function MisPagosPage({
-  searchParams,
-}: {
-  searchParams: { fecha?: string };
-}) {
+export default async function MisPagosPage() {
   const session = await getServerSession(authOptions);
   const cobradorId = (session?.user as any)?.cobradorId as string | null;
   const nombre = session?.user?.name ?? "";
-  const fecha = searchParams.fecha;
 
   if (!cobradorId) {
     return (
@@ -30,21 +24,36 @@ export default async function MisPagosPage({
   }
 
   const misPagos = await prisma.pago.findMany({
-    where: { cobradorId, ...(fecha ? { fecha: new Date(fecha) } : {}) },
-    include: { contenedor: true },
+    where: { cobradorId },
+    include: { contenedor: true, cobrador: true, cobradorAsignadoPor: true },
     orderBy: { fecha: "desc" },
   });
 
-  const pagos = misPagos.map((p) => ({
-    id: p.id,
-    persona: p.persona,
-    fechaStr: p.fecha.toLocaleDateString("es-ES"),
-    banco: p.banco,
-    contenedorId: p.contenedorId ?? "sin-contenedor",
-    contenedorNombre: p.contenedor?.nombre ?? "Sin contenedor",
-    importeUsd: p.importeUsd !== null ? Number(p.importeUsd) : null,
-    importeEur: p.importeEur !== null ? Number(p.importeEur) : null,
-  }));
+  const pagos = misPagos.map((p) => {
+    let etiquetaAsignacion: string | null = null;
+    if (p.cobradorAsignadoPor) {
+      if (p.cobradorAsignadoPor.rol === "ADMIN") etiquetaAsignacion = "Admin";
+      else if (p.cobradorAsignadoPor.cobradorId && p.cobradorAsignadoPor.cobradorId === p.cobradorId)
+        etiquetaAsignacion = "Auto";
+      else etiquetaAsignacion = p.cobradorAsignadoPor.nombre ? `Por ${p.cobradorAsignadoPor.nombre}` : "Otro";
+    }
+    return {
+      id: p.id,
+      persona: p.persona,
+      fecha: p.fecha.toISOString().slice(0, 10),
+      fechaStr: p.fecha.toLocaleDateString("es-ES"),
+      banco: p.banco,
+      contenedorId: p.contenedorId ?? "sin-contenedor",
+      contenedorNombre: p.contenedor?.nombre ?? "Sin contenedor",
+      cobradorNombre: p.cobrador?.nombre ?? null,
+      etiquetaAsignacion,
+      importeUsd: p.importeUsd !== null ? Number(p.importeUsd) : null,
+      importeEur: p.importeEur !== null ? Number(p.importeEur) : null,
+      tasaCambio: p.tasaCambio !== null ? Number(p.tasaCambio) : null,
+      fechaTasaCambio: p.fechaTasaCambio ? p.fechaTasaCambio.toISOString().slice(0, 10) : null,
+      monedaOriginal: p.monedaOriginal,
+    };
+  });
 
   return (
     <div className="min-h-screen">
@@ -66,12 +75,7 @@ export default async function MisPagosPage({
 
         <TabsCobrador activo="pagos" />
 
-        <div className="flex items-center justify-between gap-3 mb-4">
-          <FiltroFecha basePath="/mi/pagos" fecha={fecha} />
-          <div className="font-mono text-[12px] text-steel">
-            {misPagos.length} pago(s){fecha ? ` · ${new Date(fecha).toLocaleDateString("es-ES")}` : ""}
-          </div>
-        </div>
+        <div className="font-mono text-[12px] text-steel mb-4">{misPagos.length} pago(s) en total</div>
 
         <MisPagosLista pagos={pagos} />
       </main>

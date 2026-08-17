@@ -86,7 +86,15 @@ export default async function DetalleCobradorPage({ params }: { params: { id: st
                     {pago.fecha.toLocaleDateString("es-ES")} · {pago.banco} ·{" "}
                     {pago.contenedor?.nombre ?? "sin contenedor"}
                     {pago.cobradorAsignadoPor && (
-                      <> · {pago.cobradorAsignadoPor.rol === "ADMIN" ? "asignado por Admin" : "autoasignado"}</>
+                      <>
+                        {" "}
+                        ·{" "}
+                        {pago.cobradorAsignadoPor.rol === "ADMIN"
+                          ? "asignado por Admin"
+                          : pago.cobradorAsignadoPor.cobradorId === pago.cobradorId
+                          ? "autoasignado"
+                          : `asignado por ${pago.cobradorAsignadoPor.nombre ?? "otro cobrador"}`}
+                      </>
                     )}
                   </div>
                 </div>

@@ -23,6 +23,7 @@ export default function NuevoContenedorPage() {
             monedaSaldoInicial: "USD",
             fechaInicio: "",
             totalFactura: "",
+            monedaTotalFactura: "USD",
             estado: "ACTIVO",
           }}
         />
