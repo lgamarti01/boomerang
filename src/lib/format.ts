@@ -15,3 +15,7 @@ export function formatUsd(n: number): string {
 export function formatEur(n: number): string {
   return formatNumeroEs(n) + " €";
 }
+
+export function formatMonto(n: number, simbolo: string): string {
+  return formatNumeroEs(n) + " " + simbolo;
+}

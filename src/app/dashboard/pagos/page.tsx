@@ -1,14 +1,33 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import ListaPagosFecha from "@/components/ListaPagosFecha";
+import { obtenerPagosFiltrados, simplificarPago } from "@/lib/pagosQuery";
 
 export const dynamic = "force-dynamic";
 
-export default async function PagosPorFechaPage() {
-  const pagos = await prisma.pago.findMany({
-    include: { cobrador: true, contenedor: true, cobradorAsignadoPor: true },
-    orderBy: { fecha: "desc" },
-  });
+export default async function PagosPorFechaPage({
+  searchParams,
+}: {
+  searchParams: {
+    contenedorId?: string;
+    fecha?: string;
+    nombre?: string;
+    cobrador?: string;
+    monto?: string;
+    moneda?: string;
+  };
+}) {
+  const filtros = {
+    contenedorId: searchParams.contenedorId || "",
+    fecha: searchParams.fecha || "",
+    nombre: searchParams.nombre || "",
+    cobrador: searchParams.cobrador || "",
+    monto: searchParams.monto || "",
+    moneda: (searchParams.moneda as "EUR" | "USD") || "EUR",
+  };
+
+  const resultado = await obtenerPagosFiltrados(filtros, 1);
+  const pagosSimplificados = resultado.pagos.map(simplificarPago);
 
   const contenedores = await prisma.contenedor.findMany({
     select: { id: true, nombre: true },
@@ -18,31 +37,6 @@ export default async function PagosPorFechaPage() {
   const cobradores = await prisma.cobrador.findMany({
     where: { activo: true },
     select: { id: true, nombre: true },
-  });
-
-  const pagosSimplificados = pagos.map((p) => {
-    let etiquetaAsignacion: string | null = null;
-    if (p.cobradorAsignadoPor) {
-      if (p.cobradorAsignadoPor.rol === "ADMIN") etiquetaAsignacion = "Admin";
-      else if (p.cobradorAsignadoPor.cobradorId && p.cobradorAsignadoPor.cobradorId === p.cobradorId)
-        etiquetaAsignacion = "Auto";
-      else etiquetaAsignacion = p.cobradorAsignadoPor.nombre ? `Por ${p.cobradorAsignadoPor.nombre}` : "Otro";
-    }
-    return {
-      id: p.id,
-      fecha: p.fecha.toISOString().slice(0, 10),
-      persona: p.persona,
-      banco: p.banco,
-      contenedorId: p.contenedorId,
-      contenedorNombre: p.contenedor?.nombre ?? null,
-      cobradorNombre: p.cobrador?.nombre ?? null,
-      etiquetaAsignacion,
-      importeUsd: p.importeUsd !== null ? Number(p.importeUsd) : null,
-      importeEur: p.importeEur !== null ? Number(p.importeEur) : null,
-      tasaCambio: p.tasaCambio !== null ? Number(p.tasaCambio) : null,
-      fechaTasaCambio: p.fechaTasaCambio ? p.fechaTasaCambio.toISOString().slice(0, 10) : null,
-      monedaOriginal: p.monedaOriginal,
-    };
   });
 
   return (
@@ -56,13 +50,18 @@ export default async function PagosPorFechaPage() {
       </div>
 
       <main className="max-w-2xl mx-auto w-full px-4 py-6">
-        {pagos.length === 0 ? (
-          <div className="text-center text-steel text-[13.5px] py-10">
-            No hay ningún pago registrado todavía.
-          </div>
-        ) : (
-          <ListaPagosFecha pagos={pagosSimplificados} contenedores={contenedores} cobradores={cobradores} />
-        )}
+        <ListaPagosFecha
+          key={JSON.stringify(filtros)}
+          pagosIniciales={pagosSimplificados}
+          totalUsdInicial={resultado.totalUsd}
+          totalEurInicial={resultado.totalEur}
+          totalCountInicial={resultado.totalCount}
+          sinAsignarInicial={resultado.sinAsignarCount}
+          hasMoreInicial={resultado.hasMore}
+          filtrosIniciales={filtros}
+          contenedores={contenedores}
+          cobradores={cobradores}
+        />
       </main>
     </div>
   );
