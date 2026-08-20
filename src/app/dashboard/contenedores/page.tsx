@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
+import EliminarContenedor from "@/components/EliminarContenedor";
 
 export const dynamic = "force-dynamic";
 
@@ -91,12 +92,15 @@ export default async function ContenedoresPage() {
                   <span>Total: {formatUsd(totalFactura)}</span>
                 </div>
               </Link>
-              <Link
-                href={`/dashboard/contenedores/${c.id}/editar`}
-                className="inline-block mt-2.5 text-[11.5px] font-mono text-navy-800 underline underline-offset-2"
-              >
-                Editar datos del contenedor
-              </Link>
+              <div className="flex items-center justify-between mt-2.5">
+                <Link
+                  href={`/dashboard/contenedores/${c.id}/editar`}
+                  className="text-[11.5px] font-mono text-navy-800 underline underline-offset-2"
+                >
+                  Editar datos del contenedor
+                </Link>
+                <EliminarContenedor contenedorId={c.id} nombre={c.nombre} numPagos={c.pagos.length} />
+              </div>
             </div>
           );
         })}

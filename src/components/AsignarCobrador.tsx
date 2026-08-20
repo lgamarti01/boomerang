@@ -8,7 +8,7 @@ type Cobrador = { id: string; nombre: string };
 const COLOR_BY_NOMBRE: Record<string, string> = {
   Vasallo: "text-[#2A4FB0]",
   Pedro: "text-teal",
-  Jose: "text-[#B0662A]",
+  Adrian: "text-[#B0662A]",
 };
 
 export default function AsignarCobrador({

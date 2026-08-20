@@ -5,38 +5,71 @@ import { prisma } from "@/lib/prisma";
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
-  if (!session || (session.user as any).rol !== "ADMIN") {
+  if (!session) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
+  const usuarioId = (session.user as any).id as string;
+  const body = await req.json();
+
+  const data: Record<string, any> = { actualizadoPorId: usuarioId };
+
+  if (body.nombre !== undefined) {
+    if (!String(body.nombre).trim()) {
+      return NextResponse.json({ error: "El nombre no puede estar vacío" }, { status: 400 });
+    }
+    data.nombre = String(body.nombre).trim();
+  }
+
+  if (body.codigo !== undefined) data.codigo = body.codigo;
+
+  if (body.saldoInicial !== undefined) data.saldoInicial = body.saldoInicial;
+  if (body.monedaSaldoInicial !== undefined) data.monedaSaldoInicial = body.monedaSaldoInicial;
+
+  if (body.fechaInicio !== undefined) {
+    const nuevaFecha = new Date(body.fechaInicio);
+    if (isNaN(nuevaFecha.getTime())) {
+      return NextResponse.json({ error: "Fecha de inicio inválida" }, { status: 400 });
+    }
+    data.fechaInicio = nuevaFecha;
+  }
+
+  if (body.totalFactura !== undefined) data.totalFactura = body.totalFactura;
+  if (body.monedaTotalFactura !== undefined) data.monedaTotalFactura = body.monedaTotalFactura;
+  if (body.estado !== undefined) data.estado = body.estado;
+
+  const contenedor = await prisma.contenedor.update({
+    where: { id: params.id },
+    data,
+  });
+
+  return NextResponse.json({ contenedor });
+}
+
+export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
+  const rol = (session.user as any).rol as string;
+  if (rol !== "ADMIN") {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
-  const usuarioId = (session.user as any).id as string;
 
-  const body = await req.json();
-  const { nombre, codigo, saldoInicial, monedaSaldoInicial, fechaInicio, totalFactura, monedaTotalFactura, estado } = body;
+  const contenedor = await prisma.contenedor.findUnique({
+    where: { id: params.id },
+    select: { id: true, nombre: true },
+  });
 
-  if (!nombre || !fechaInicio || totalFactura === undefined || totalFactura === null) {
-    return NextResponse.json({ error: "Faltan campos obligatorios" }, { status: 400 });
+  if (!contenedor) {
+    return NextResponse.json({ error: "Contenedor no encontrado" }, { status: 404 });
   }
 
-  try {
-    const contenedor = await prisma.contenedor.update({
-      where: { id: params.id },
-      data: {
-        nombre,
-        codigo: codigo && String(codigo).trim() ? String(codigo).trim() : null,
-        saldoInicial: saldoInicial ?? 0,
-        monedaSaldoInicial: monedaSaldoInicial || "USD",
-        fechaInicio: new Date(fechaInicio),
-        totalFactura,
-        monedaTotalFactura: monedaTotalFactura || "USD",
-        estado: estado || "ACTIVO",
-        actualizadoPorId: usuarioId,
-      },
-    });
-    return NextResponse.json({ contenedor });
-  } catch (e: any) {
-    if (e.code === "P2002") {
-      return NextResponse.json({ error: "Ya existe un contenedor con ese código" }, { status: 400 });
-    }
-    return NextResponse.json({ error: "Error al guardar los cambios" }, { status: 500 });
-  }
+  await prisma.$transaction([
+    prisma.pago.deleteMany({ where: { contenedorId: params.id } }),
+    prisma.contenedor.delete({ where: { id: params.id } }),
+  ]);
+
+  return NextResponse.json({ ok: true });
 }

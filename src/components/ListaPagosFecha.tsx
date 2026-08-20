@@ -4,9 +4,11 @@ import { useState, useMemo } from "react";
 import AsignarCobrador from "@/components/AsignarCobrador";
 import QuitarAsignacion from "@/components/QuitarAsignacion";
 import ReasignarContenedor from "@/components/ReasignarContenedor";
+import EditarPago from "@/components/EditarPago";
 
 type PagoFecha = {
   id: string;
+  fecha: string;
   persona: string;
   banco: string;
   contenedorId: string | null;
@@ -157,7 +159,9 @@ export default function ListaPagosFecha({
               <div className="flex justify-between items-start mb-3">
                 <div>
                   <div className="font-semibold text-[14.5px]">{pago.persona}</div>
-                  <div className="font-mono text-[11.5px] text-steel mt-0.5">{pago.banco}</div>
+                  <div className="font-mono text-[11.5px] text-steel mt-0.5">
+                    {new Date(pago.fecha).toLocaleDateString("es-ES")} · {pago.banco}
+                  </div>
                 </div>
                 <div className="text-right">
                   <div className="font-mono font-bold text-[15.5px]">
@@ -189,6 +193,14 @@ export default function ListaPagosFecha({
                   contenedores={contenedores}
                 />
               </div>
+
+              <EditarPago
+                pagoId={pago.id}
+                fecha={pago.fecha}
+                persona={pago.persona}
+                importeOriginal={original}
+                monedaOriginal={pago.monedaOriginal}
+              />
 
               {pago.cobradorNombre ? (
                 <div className="flex items-center justify-between pt-3 border-t border-line">

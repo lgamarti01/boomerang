@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import SelectorFecha from "@/components/SelectorFecha";
 import ListaPagosFecha from "@/components/ListaPagosFecha";
+import RecalcularImportes from "@/components/RecalcularImportes";
 
 export const dynamic = "force-dynamic";
 
@@ -24,12 +25,13 @@ function hoyISO() {
 export default async function PagosPorFechaPage({
   searchParams,
 }: {
-  searchParams: { fecha?: string };
+  searchParams: { fecha?: string; todas?: string };
 }) {
+  const verTodas = searchParams.todas === "1";
   const fecha = searchParams.fecha || hoyISO();
 
   const pagos = await prisma.pago.findMany({
-    where: { fecha: new Date(fecha) },
+    where: verTodas ? {} : { fecha: new Date(fecha) },
     include: { cobrador: true, contenedor: true, cobradorAsignadoPor: true },
     orderBy: { persona: "asc" },
   });
@@ -61,6 +63,7 @@ export default async function PagosPorFechaPage({
     }
     return {
       id: p.id,
+      fecha: p.fecha.toISOString().slice(0, 10),
       persona: p.persona,
       banco: p.banco,
       contenedorId: p.contenedorId,
@@ -86,10 +89,14 @@ export default async function PagosPorFechaPage({
       </div>
 
       <main className="max-w-2xl mx-auto w-full px-4 py-6">
-        <div className="flex items-center justify-between gap-3 mb-5">
-          <SelectorFecha fecha={fecha} />
+        <RecalcularImportes />
+
+        <div className="flex items-center justify-between gap-3 mb-2">
+          <SelectorFecha fecha={verTodas ? "" : fecha} />
           <div className="text-right">
-            <div className="font-mono text-[11px] text-steel uppercase">Total ese día</div>
+            <div className="font-mono text-[11px] text-steel uppercase">
+              {verTodas ? "Total (todas las fechas)" : "Total ese día"}
+            </div>
             <div className="font-mono font-bold text-lg flex items-center gap-2 justify-end">
               <span>{formatUsd(totalUsd)}</span>
               <span className="text-steel">·</span>
@@ -98,9 +105,26 @@ export default async function PagosPorFechaPage({
           </div>
         </div>
 
+        <div className="mb-5">
+          {verTodas ? (
+            <Link href="/dashboard/pagos" className="text-[11.5px] font-mono text-steel underline underline-offset-2">
+              Volver a filtrar por fecha
+            </Link>
+          ) : (
+            <Link
+              href="/dashboard/pagos?todas=1"
+              className="text-[11.5px] font-mono text-navy-800 underline underline-offset-2"
+            >
+              Ver todas las fechas
+            </Link>
+          )}
+        </div>
+
         {pagos.length === 0 ? (
           <div className="text-center text-steel text-[13.5px] py-10">
-            No hay ningún pago registrado el {new Date(fecha).toLocaleDateString("es-ES")}.
+            {verTodas
+              ? "No hay ningún pago registrado."
+              : `No hay ningún pago registrado el ${new Date(fecha).toLocaleDateString("es-ES")}.`}
           </div>
         ) : (
           <ListaPagosFecha pagos={pagosSimplificados} contenedores={contenedores} cobradores={cobradores} />

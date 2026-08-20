@@ -25,8 +25,11 @@ export function esFicheroSabadell(headers: string[]): boolean {
 
 function extraerPersona(concepto: string): string {
   const c = (concepto || "").trim();
-  // "ABONO TRANSFERENCIA DE <persona>" — a veces "ABONO TRANSFERENCIAS DE ..."
-  const m = c.match(/^ABONO TRANSFERENCIAS?\s+DE\s+(.+)$/i);
+  // Formatos posibles:
+  // "ABONO TRANSFERENCIA DE <persona>"
+  // "TRANSFERENCIA DE <persona>"
+  // "TRANSFERENCIA <persona>" (sin "DE")
+  const m = c.match(/^(?:ABONO\s+)?TRANSFERENCIAS?\s+(?:DE\s+)?(.+)$/i);
   if (m) return m[1].trim();
   return c;
 }
@@ -49,7 +52,6 @@ export function procesarSabadell(filas: FilaCruda[]): PagoDetectado[] {
   for (const fila of filas) {
     const concepto = String(fila["Concepto"] || "").trim();
     if (!concepto) continue;
-    if (!/^ABONO/i.test(concepto)) continue; // solo movimientos de abono (ingresos)
     if (concepto.toUpperCase().includes("BOOMERANG")) continue; // traspaso interno propio
 
     const importe = parseFloat(String(fila["Importe"]).replace(",", "."));

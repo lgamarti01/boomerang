@@ -3,7 +3,6 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import PendientesCobrador from "@/components/PendientesCobrador";
-import QuitarAsignacion from "@/components/QuitarAsignacion";
 import SignOutButton from "@/components/SignOutButton";
 import CompletarContenedor from "@/components/CompletarContenedor";
 import SelectorContenedor from "@/components/SelectorContenedor";
@@ -13,7 +12,7 @@ export const dynamic = "force-dynamic";
 const AVATAR_COLOR: Record<string, string> = {
   Vasallo: "bg-[#2A4FB0]",
   Pedro: "bg-teal",
-  Jose: "bg-[#B0662A]",
+  Adrián: "bg-[#B0662A]",
 };
 
 function round2(n: number) {
@@ -33,23 +32,6 @@ function formatEnMoneda(valorUsd: number, moneda: string, tasaUsdPorEur: number 
     return formatEur(valorUsd / tasaUsdPorEur);
   }
   return formatUsd(valorUsd);
-}
-
-function formatImporte(pago: { importeUsd: any; importeEur: any }) {
-  if (pago.importeUsd !== null) return formatUsd(Number(pago.importeUsd));
-  if (pago.importeEur !== null) return formatEur(Number(pago.importeEur)) + " (sin tasa)";
-  return "—";
-}
-
-function etiquetaAsignacion(pago: {
-  cobradorId: string | null;
-  cobradorAsignadoPor: { rol: string; cobradorId: string | null; nombre: string | null } | null;
-}): string | null {
-  const a = pago.cobradorAsignadoPor;
-  if (!a) return null;
-  if (a.rol === "ADMIN") return "Admin";
-  if (a.cobradorId && a.cobradorId === pago.cobradorId) return "Auto";
-  return a.nombre ? `Por ${a.nombre}` : "Otro";
 }
 
 export default async function DashboardPage({
@@ -108,13 +90,13 @@ export default async function DashboardPage({
   const pagosDelContenedor = contenedor.pagos.filter((p) => p.importeUsd !== null);
   const pagosSinConversion = contenedor.pagos.filter((p) => p.importeUsd === null);
   const sumaPagos = round2(pagosDelContenedor.reduce((sum, p) => sum + Number(p.importeUsd), 0));
-  const recibido = round2(saldoInicial + sumaPagos);
-  const falta = round2(Math.max(totalFactura - recibido, 0));
-  const excedente = round2(Math.max(recibido - totalFactura, 0));
-  const pct = totalFactura > 0 ? Math.min(Math.round((recibido / totalFactura) * 100), 100) : 0;
+  const recibido = sumaPagos; // solo la suma de pagos, sin el saldo inicial
+  const totalConSaldoInicial = round2(saldoInicial + recibido);
+  const falta = round2(Math.max(totalFactura - saldoInicial - recibido, 0));
+  const excedente = round2(Math.max(totalConSaldoInicial - totalFactura, 0));
+  const pct = totalFactura > 0 ? Math.min(Math.round((totalConSaldoInicial / totalFactura) * 100), 100) : 0;
 
   const pendientes = contenedor.pagos.filter((p) => !p.cobradorId);
-  const ultimosPagos = contenedor.pagos.slice(0, 5);
 
   const objetivoPorCobrador = cobradores.length > 0 ? round2(totalFactura / cobradores.length) : 0;
   const desglose = cobradores.map((c) => {
@@ -122,6 +104,9 @@ export default async function DashboardPage({
     const total = round2(pagosDeCobrador.reduce((sum, p) => sum + Number(p.importeUsd), 0));
     return { cobrador: c, total, count: pagosDeCobrador.length };
   });
+
+  const pagosSinAsignarDelContenedor = pagosDelContenedor.filter((p) => !p.cobradorId);
+  const totalSinAsignar = round2(pagosSinAsignarDelContenedor.reduce((sum, p) => sum + Number(p.importeUsd), 0));
 
   return (
     <div className="min-h-screen pb-20 md:pb-0 md:grid md:grid-cols-[240px_1fr]">
@@ -247,6 +232,11 @@ export default async function DashboardPage({
               <div className="font-mono text-[26px] font-semibold">
                 {formatEnMoneda(excedente > 0 ? excedente : falta, monedaTotalFactura, ultimaTasa)}
               </div>
+              {excedente === 0 && (
+                <div className="font-mono text-[10px] text-steel-light mt-1 opacity-80">
+                  Total factura − saldo inicial − recibido
+                </div>
+              )}
             </div>
             <div className="text-right font-mono text-[13px] text-steel-light">
               RECIBIDO
@@ -331,43 +321,16 @@ export default async function DashboardPage({
         )}
 
         <div className="font-mono text-[11.5px] uppercase tracking-wide text-steel my-6 flex items-center gap-2 after:content-[''] after:flex-1 after:h-px after:bg-line">
-          Últimos pagos recibidos
-        </div>
-        <div className="bg-white border border-line rounded-xl px-4">
-          {ultimosPagos.length === 0 ? (
-            <div className="text-center text-steel text-[13px] py-6">
-              Este contenedor todavía no tiene ningún pago.
-            </div>
-          ) : (
-            ultimosPagos.map((pago) => (
-              <div key={pago.id} className="flex justify-between items-center py-3 border-b border-line last:border-0 gap-2.5">
-                <div>
-                  <div className="font-semibold text-[13.5px]">{pago.persona}</div>
-                  <div className="font-mono text-xs text-steel mt-0.5">
-                    {pago.fecha.toLocaleDateString("es-ES")} · {pago.banco}
-                  </div>
-                </div>
-                {pago.cobrador ? (
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center gap-1.5 bg-teal-bg text-[#0F5D45] text-xs font-semibold px-2.5 py-1.5 rounded-full font-mono before:content-['✓'] before:text-[11px]">
-                      {pago.cobrador.nombre}
-                      {etiquetaAsignacion(pago) && (
-                        <span className="opacity-60 font-normal"> · {etiquetaAsignacion(pago)}</span>
-                      )}
-                    </span>
-                    <QuitarAsignacion pagoId={pago.id} />
-                  </div>
-                ) : (
-                  <span className="text-xs text-alert font-mono">sin asignar</span>
-                )}
-                <div className="font-mono font-semibold whitespace-nowrap">{formatImporte(pago)}</div>
-              </div>
-            ))
-          )}
-        </div>
-
-        <div className="font-mono text-[11.5px] uppercase tracking-wide text-steel my-6 flex items-center gap-2 after:content-[''] after:flex-1 after:h-px after:bg-line">
           Desglose por cobrador
+        </div>
+        <div className="bg-white border border-line rounded-xl p-3.5 mb-2.5 flex items-center justify-between">
+          <div>
+            <div className="font-semibold text-[14.5px]">Total recibido</div>
+            <div className="font-mono text-[11.5px] text-steel mt-0.5">
+              {pendientes.length > 0 ? `${pendientes.length} pago(s) sin asignar` : "todos los pagos asignados"}
+            </div>
+          </div>
+          <div className="font-mono font-bold text-base">{formatUsd(recibido)}</div>
         </div>
         {desglose.map(({ cobrador, total, count }) => (
           <Link
@@ -392,6 +355,22 @@ export default async function DashboardPage({
             </div>
           </Link>
         ))}
+        {pagosSinAsignarDelContenedor.length > 0 && (
+          <div className="bg-white border border-[#F3C9C9] border-l-[3px] border-l-alert rounded-xl p-3.5 mb-2.5 flex items-center gap-3.5">
+            <div className="w-[38px] h-[38px] rounded-[10px] flex items-center justify-center font-display font-semibold text-sm text-white flex-shrink-0 bg-alert">
+              ?
+            </div>
+            <div className="flex-1">
+              <div className="font-semibold text-[14.5px]">Sin asignar</div>
+              <div className="font-mono text-[11.5px] text-steel mt-0.5">
+                {pagosSinAsignarDelContenedor.length} pago(s) sin asignar
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="font-mono font-bold text-base">{formatUsd(totalSinAsignar)}</div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

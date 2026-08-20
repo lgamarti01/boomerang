@@ -37,13 +37,14 @@ export async function recalcularPagosConTasaMejorable(usuarioId: string): Promis
   for (const pago of todosPagos) {
     const fechaPago = fechaISO(pago.fecha);
     const fechaTasaActual = pago.fechaTasaCambio ? fechaISO(pago.fechaTasaCambio) : null;
-
-    if (fechaTasaActual === fechaPago) continue;
+    const valorTasaActual = pago.tasaCambio !== null ? Number(pago.tasaCambio) : null;
 
     const encontrada = buscarTasaConFecha(tasasOrdenadas, fechaPago);
     if (!encontrada) continue;
 
-    if (fechaTasaActual === encontrada.fechaTasa) continue;
+    const mismaFecha = fechaTasaActual === encontrada.fechaTasa;
+    const mismoValor = valorTasaActual !== null && valorTasaActual === encontrada.valor;
+    if (mismaFecha && mismoValor) continue; // ya está al día, nada que hacer
 
     const data: Record<string, any> = {
       tasaCambio: encontrada.valor,

@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 const AVATAR_COLOR: Record<string, string> = {
   Vasallo: "bg-[#2A4FB0]",
   Pedro: "bg-teal",
-  Jose: "bg-[#B0662A]",
+  Adrian: "bg-[#B0662A]",
 };
 
 function round2(n: number) {
