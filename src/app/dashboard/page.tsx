@@ -142,6 +142,12 @@ export default async function DashboardPage({
         >
           <span>👤</span> Usuarios
         </Link>
+        <Link
+          href="/dashboard/estadisticas"
+          className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-steel-light text-[13.5px] font-medium hover:bg-white/5"
+        >
+          <span>📈</span> Estadísticas
+        </Link>
       </div>
 
       <main className="max-w-3xl mx-auto md:mx-0 w-full px-4 py-5 md:px-10 md:py-8">
@@ -170,6 +176,12 @@ export default async function DashboardPage({
               className="flex items-center gap-1.5 px-3.5 py-2.5 border border-line bg-white text-[13px] font-semibold rounded-lg"
             >
               📅
+            </Link>
+            <Link
+              href="/dashboard/estadisticas"
+              className="flex items-center gap-1.5 px-3.5 py-2.5 border border-line bg-white text-[13px] font-semibold rounded-lg"
+            >
+              📈
             </Link>
             <Link
               href="/dashboard/importar"
@@ -257,13 +269,19 @@ export default async function DashboardPage({
 
         {excedente > 0 && (
           <div className="bg-teal-bg border border-[#CDE9DF] rounded-xl p-4 mb-4">
-            <div className="text-[13px] text-[#0F5D45] mb-3">
-              Este contenedor ha alcanzado el total de factura.{" "}
-              <b className="font-mono">{formatEnMoneda(excedente, monedaTotalFactura, ultimaTasa)}</b> de
-              excedente — muévelo al siguiente contenedor cuando lo des de alta, y marca este como
-              completado.
+            <div className={`text-[13px] text-[#0F5D45] ${contenedor.estado === "ACTIVO" ? "mb-3" : ""}`}>
+              Este contenedor tenía un saldo inicial de{" "}
+              <b className="font-mono">{formatEnMoneda(saldoInicial, monedaTotalFactura, ultimaTasa)}</b>, y se
+              le han asociado <b className="font-mono">{pagosDelContenedor.length}</b> pago(s) por un importe
+              total de <b className="font-mono">{formatEnMoneda(recibido, monedaTotalFactura, ultimaTasa)}</b>.
+              Por lo tanto alcanza el total de factura (
+              <b className="font-mono">{formatEnMoneda(totalFactura, monedaTotalFactura, ultimaTasa)}</b>) y
+              queda un excedente de{" "}
+              <b className="font-mono">{formatEnMoneda(excedente, monedaTotalFactura, ultimaTasa)}</b> que
+              puedes mover al siguiente contenedor cuando lo des de alta.
+              {contenedor.estado === "ACTIVO" && " Marca este como completado."}
             </div>
-            <CompletarContenedor contenedorId={contenedor.id} />
+            {contenedor.estado === "ACTIVO" && <CompletarContenedor contenedorId={contenedor.id} />}
           </div>
         )}
 
