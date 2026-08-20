@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import AsignarCobrador from "@/components/AsignarCobrador";
+import { formatUsd, formatEur } from "@/lib/format";
 
 type Cobrador = { id: string; nombre: string };
 
@@ -18,12 +19,8 @@ type PagoPendiente = {
   monedaOriginal: string;
 };
 
-function round2(n: number) {
-  return Math.round((n + Number.EPSILON) * 100) / 100;
-}
-
 function formatMonto(n: number, simbolo: string) {
-  return round2(n).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " " + simbolo;
+  return simbolo === "$" ? formatUsd(n) : formatEur(n);
 }
 
 function importeOriginal(pago: PagoPendiente) {

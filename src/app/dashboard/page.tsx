@@ -6,6 +6,7 @@ import PendientesCobrador from "@/components/PendientesCobrador";
 import SignOutButton from "@/components/SignOutButton";
 import CompletarContenedor from "@/components/CompletarContenedor";
 import SelectorContenedor from "@/components/SelectorContenedor";
+import { round2, formatUsd, formatEur } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -14,18 +15,6 @@ const AVATAR_COLOR: Record<string, string> = {
   Pedro: "bg-teal",
   Adrián: "bg-[#B0662A]",
 };
-
-function round2(n: number) {
-  return Math.round((n + Number.EPSILON) * 100) / 100;
-}
-
-function formatUsd(n: number) {
-  return round2(n).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " $";
-}
-
-function formatEur(n: number) {
-  return round2(n).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
-}
 
 function formatEnMoneda(valorUsd: number, moneda: string, tasaUsdPorEur: number | null) {
   if (moneda === "EUR" && tasaUsdPorEur) {

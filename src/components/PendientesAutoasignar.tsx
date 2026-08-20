@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { formatUsd, formatEur } from "@/lib/format";
 
 type Pago = {
   id: string;
@@ -13,18 +14,9 @@ type Pago = {
   contenedorNombre: string | null;
 };
 
-function round2(n: number) {
-  return Math.round((n + Number.EPSILON) * 100) / 100;
-}
-
-function formatUsd(n: number) {
-  return round2(n).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " $";
-}
-
 function formatImporte(p: Pago) {
   if (p.importeUsd !== null) return formatUsd(p.importeUsd);
-  if (p.importeEur !== null)
-    return round2(p.importeEur).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " € (sin tasa)";
+  if (p.importeEur !== null) return formatEur(p.importeEur) + " (sin tasa)";
   return "—";
 }
 

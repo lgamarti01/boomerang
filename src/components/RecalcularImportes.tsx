@@ -20,11 +20,7 @@ export default function RecalcularImportes() {
         throw new Error(data.error || "No se pudo recalcular");
       }
       const data = await res.json();
-      setMensaje(
-        data.actualizados > 0
-          ? `${data.actualizados} pago(s) actualizado(s) con una tasa mejor.`
-          : "Todos los pagos ya tenían la mejor tasa disponible."
-      );
+      setMensaje(data.actualizados > 0 ? `${data.actualizados} pago(s) actualizado(s)` : "Ya estaban al día");
       router.refresh();
     } catch (e: any) {
       setError(e.message || "Error al recalcular");
@@ -34,16 +30,17 @@ export default function RecalcularImportes() {
   }
 
   return (
-    <div className="mb-4">
+    <div className="flex-shrink-0 text-right">
       <button
         onClick={recalcular}
         disabled={cargando}
-        className="w-full px-3.5 py-2.5 bg-white border border-line rounded-lg text-[13px] font-semibold text-navy-800 disabled:opacity-60"
+        title="Recalcular importes con las últimas tasas"
+        className="w-9 h-9 flex items-center justify-center bg-white border border-line rounded-lg disabled:opacity-60"
       >
-        {cargando ? "Recalculando..." : "Recalcular importes con las últimas tasas"}
+        {cargando ? "…" : "↻"}
       </button>
-      {mensaje && <div className="text-[11.5px] font-mono text-steel mt-1.5">{mensaje}</div>}
-      {error && <div className="text-[11.5px] font-mono text-alert mt-1.5">{error}</div>}
+      {mensaje && <div className="text-[10px] font-mono text-steel mt-1 max-w-[90px]">{mensaje}</div>}
+      {error && <div className="text-[10px] font-mono text-alert mt-1 max-w-[90px]">{error}</div>}
     </div>
   );
 }

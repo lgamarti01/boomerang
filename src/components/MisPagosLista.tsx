@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import QuitarAsignacion from "@/components/QuitarAsignacion";
+import { round2, formatUsd, formatEur } from "@/lib/format";
 
 type Pago = {
   id: string;
@@ -20,12 +21,8 @@ type Pago = {
   monedaOriginal: string;
 };
 
-function round2(n: number) {
-  return Math.round((n + Number.EPSILON) * 100) / 100;
-}
-
 function formatMonto(n: number, simbolo: string) {
-  return round2(n).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " " + simbolo;
+  return simbolo === "$" ? formatUsd(n) : formatEur(n);
 }
 
 function importeOriginal(p: Pago) {
@@ -143,9 +140,7 @@ export default function MisPagosLista({ pagos }: { pagos: Pago[] }) {
               </div>
               <div className="text-right">
                 <div className="font-mono text-[10.5px] text-steel uppercase">Total cobrado</div>
-                <div className="font-mono font-bold text-[15px]">
-                  {round2(g.total).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $
-                </div>
+                <div className="font-mono font-bold text-[15px]">{formatUsd(g.total)}</div>
               </div>
             </div>
 

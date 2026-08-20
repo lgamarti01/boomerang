@@ -1,11 +1,8 @@
 import { prisma } from "@/lib/prisma";
+import { round2 } from "@/lib/format";
 
 export type TasaOrdenada = { fecha: string; valor: number };
 export type TasaEncontrada = { valor: number; fechaTasa: string } | null;
-
-function round2(n: number) {
-  return Math.round((n + Number.EPSILON) * 100) / 100;
-}
 
 function fechaISO(d: Date) {
   return d.toISOString().slice(0, 10);

@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
+import { formatUsd, formatEur } from "@/lib/format";
 
 type ResultadoPagos = {
   tipo: "pagos";
@@ -39,10 +40,10 @@ function formatFecha(iso: string) {
 
 function formatImporteBanco(b: UltimoPagoBanco) {
   if (b.importeUsd !== null) {
-    return b.importeUsd.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " $";
+    return formatUsd(b.importeUsd);
   }
   if (b.importeEur !== null) {
-    return b.importeEur.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " € (sin tasa)";
+    return formatEur(b.importeEur) + " (sin tasa)";
   }
   return null;
 }
@@ -271,9 +272,9 @@ export default function ImportarClient({
                       </div>
                       <div className="font-mono font-semibold text-right whitespace-nowrap">
                         {p.importeUsd !== null
-                          ? p.importeUsd.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " $"
+                          ? formatUsd(p.importeUsd)
                           : p.importeEur !== null
-                          ? p.importeEur.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " € (sin tasa)"
+                          ? formatEur(p.importeEur) + " (sin tasa)"
                           : "—"}
                       </div>
                     </div>

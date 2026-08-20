@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import QuitarAsignacion from "@/components/QuitarAsignacion";
+import { round2, formatUsd, formatEur } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -11,18 +12,9 @@ const AVATAR_COLOR: Record<string, string> = {
   Adrian: "bg-[#B0662A]",
 };
 
-function round2(n: number) {
-  return Math.round((n + Number.EPSILON) * 100) / 100;
-}
-
-function formatUsd(n: number) {
-  return round2(n).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " $";
-}
-
 function formatImporte(pago: { importeUsd: any; importeEur: any }) {
   if (pago.importeUsd !== null) return formatUsd(Number(pago.importeUsd));
-  if (pago.importeEur !== null)
-    return round2(Number(pago.importeEur)).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " € (sin tasa)";
+  if (pago.importeEur !== null) return formatEur(Number(pago.importeEur)) + " (sin tasa)";
   return "—";
 }
 

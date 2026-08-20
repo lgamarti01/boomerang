@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import EliminarContenedor from "@/components/EliminarContenedor";
+import { round2, formatUsd } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -15,14 +16,6 @@ const ESTADO_LABEL: Record<string, string> = {
   COMPLETADO: "Completado",
   FACTURADO: "Facturado",
 };
-
-function round2(n: number) {
-  return Math.round((n + Number.EPSILON) * 100) / 100;
-}
-
-function formatUsd(n: number) {
-  return round2(n).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " $";
-}
 
 export default async function ContenedoresPage() {
   const contenedores = await prisma.contenedor.findMany({
